@@ -29,11 +29,11 @@ class WebInterface {
 	}
 
 
-	public static function filter_tag_URLs_by_host($haystack, $local) {
+	public static function filter_tag_URLs_by_host($haystack, $host) {
 		$retval = array();
-		$localUrlParts = parse_url($local);
+		$localUrlParts = parse_url($host);
 		foreach ($haystack as $element) {
-			$fixedUri = WebInterface::relative_to_absolute_uri($element, $local . '/');
+			$fixedUri = WebInterface::relative_to_absolute_uri($element, $host . '/');
 	               	$fixedUriParts = parse_url($fixedUri);
 			if (strcasecmp($fixedUriParts['host'],$localUrlParts['host']) == 0) {
 				array_push($retval, $fixedUri);
