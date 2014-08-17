@@ -18,8 +18,6 @@ class WebInterface {
 		if ($this->xmlDOM === false) {
 			throw new Exception('Failed to parse URI.');
 			}
-		
-			
 	}
 	
 	function replace_uri_domains_in_links($old_domain, $new_domain) {
@@ -27,7 +25,6 @@ class WebInterface {
 			$link_uri = $tag->getAttribute('href');			
 		}
 	}
-
 
 	public static function filter_tag_URLs_by_host($haystack, $host) {
 		$retval = array();
@@ -39,11 +36,8 @@ class WebInterface {
 				array_push($retval, $fixedUri);
 		    }
 		}
-
-		
 		return $retval;
 	}
-
 	
 	public function get_local_linked_resources() {
 		$retval = array();
@@ -51,21 +45,15 @@ class WebInterface {
 		$localUrlParts = parse_url($local);
 
 		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "a", "href");
-		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
-	
+		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
 	
 		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "img", "src");
-		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
-	
+		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
 	
 		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "link", "href");
 		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
-
-
-		
 					
 		return $retval;
-		
 	}
 	
 	private static function get_values_by_tag_attribute($xmlDOM, $tag_name, $attribute_name) {
