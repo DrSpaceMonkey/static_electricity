@@ -45,13 +45,20 @@ class StaticWordpress {
 	public function __construct() {		
 		global $wpdb;
 		
+		
+		
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );
 		require_once  dirname(__FILE__) . '/web_interface.php';
 		#require_once  dirname(__FILE__) . '/class-tgm-plugin-activation.php';
           require_once  dirname(__FILE__) . '/database_interface.php';
 		#require_once dirname(__FILE__) . '/wp-settings-framework.php';
 		require_once dirname(__FILE__) . '/curl.php';
-		require_once dirname(__FILE__) . '/admin/admin-init.php ';
+		require_once dirname(__FILE__). '/admin/admin-init.php';
+		
+		
+		global $redux_demostatic_wordpress_option_group;
+		
+		var_dump($redux_demostatic_wordpress_option_group);
 		
 		#add_action( 'tgmpa_register', array( &$this, 'static_wordpress_required_plugins' ));
 		

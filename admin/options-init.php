@@ -1465,7 +1465,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
             $theme = wp_get_theme(); // For use with some settings. Not necessary.
 
             $this->args = array(
-                'opt_name' => 'redux_demostatic_wordpress_option_group',
+                'opt_name' => 'static_wordpress_option_group',
                 'display_name' => 'Static Wordpress',
                 'page_slug' => 'static_wordpress_options',
                 'page_title' => 'Static Wordpress',
