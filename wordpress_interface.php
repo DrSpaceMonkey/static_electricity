@@ -14,6 +14,10 @@ class Wordpress_Interface {
 		$max_page = $this->wp_query->max_num_pages;
 		return $max_page;
 	}
+	
+	private function get_number_of_posts_per_page(){
+		return get_option('posts_per_page');
+	}
 
 
 

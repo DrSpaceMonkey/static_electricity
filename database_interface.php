@@ -57,8 +57,6 @@ class DatabaseInterface {
 	
 	public function create_database_tables(){
 	
-		echo "Creating database";
-		var_dump($this);
 		$charset_collate = '';
 
 		if ( ! empty( $this->wpdb->charset ) ) {
