@@ -3,16 +3,22 @@
 class WebInterface {
 	
 	private $uri = "";
-	private $content = "";
+	private $mime_type = "";
 	private $xmlDOM = NULL;
+	private $curl = NULL;
 	
 	function __construct($uri) {
 		$this->uri = $uri;
 		
-		$this->content = WebInterface::get_uri_content($uri);
-		if ($this->content === false) {
+		$this->curl = new Curl();
+		$this->curl->setUserAgent('');
+		$this->curl->get($uri);
+		
+		
+		if ($this->curl->error) {
 			throw new Exception('Failed to fetch URI.');
-			}
+		}
+		
 
 		$this->xmlDOM = WebInterface::get_xml_DOM($this->content);
 		if ($this->xmlDOM === false) {
@@ -20,9 +26,17 @@ class WebInterface {
 			}
 	}
 	
-	function replace_uri_domains_in_links($old_domain, $new_domain) {
-		foreach($xml->getElementsByTagName('a') as $tag) {
-			$link_uri = $tag->getAttribute('href');			
+	public function get_xml() {
+		return $this->xmlDOM;
+	}
+	
+	public function get_mime_type() {
+		return $this->curl->response_headers['Content-Type'];
+	}
+	
+	function replace_uri_domains_in_tags($old_domain, $new_domain, $tag_name, $attribute_name) {
+		foreach($this->xmlDOM->getElementsByTagName($tag_name) as $tag) {
+			$link_uri = $tag->getAttribute($attribute_name);			
 		}
 	}
 
@@ -39,6 +53,10 @@ class WebInterface {
 		return $retval;
 	}
 	
+	public function get_content() {
+		return $this->curl->response;		
+	}
+		
 	public function get_local_linked_resources() {
 		$retval = array();
 		$local = home_url();		
@@ -75,21 +93,7 @@ class WebInterface {
 		return $retval;
 	}
 	
-	public static function get_uri_content($uri) {
-
-		$curl = curl_init();
-
-		curl_setopt($curl, CURLOPT_URL, $uri);
-		curl_setopt($curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1" );
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-
-		$resp = curl_exec($curl);
-
-		curl_close($curl);
-
-		return $resp;
-	}
-	
+		
 	public static function relative_to_absolute_uri($rel, $base)
   {
 		if(strpos($rel,"//")===0)

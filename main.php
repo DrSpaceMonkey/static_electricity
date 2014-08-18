@@ -15,51 +15,162 @@ class StaticWordpress {
 	protected $database = NULL;
 	private $wpsf;
 	private $plugin_name = 'Static Wordpress';
+	private $option_group = 'static_wordpress_option_group';
+	private $slug = "static_wordpress";
+	private $rescan_entire_blog = false;
 	
 	
-	public function __construct() {
+	private $settings = array(
+		'replace_uris' => NULL,
+		'new_uri_prefix' => NULL,
+	);
+	
+	private $DOM_tags_to_scan = array (
+		'ahref' => NULL,
+		'img' => NULL,
+		'css' => NULL,
+		'javascript' => NULL,
+	);
+	
+	private $wp_objects_to_scan = array (
+		'index' => NULL,
+		'tags' => NULL,
+		'pages' => NULL,
+		'posts' => NULL,
+		'attachments' => NULL,
+	);
+	
+	
+	
+	public function __construct() {		
+		global $wpdb;
+		
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );
-		include_once dirname(__FILE__) . '/web_interface.php';
-          include_once dirname(__FILE__) . '/database_interface.php';
-		require_once dirname(__FILE__) . '/wp-settings-framework.php';
-          $this->wpsf = new WordPressSettingsFramework( dirname(__FILE__) . '/settings/settings.php', '' );
+		require_once  dirname(__FILE__) . '/web_interface.php';
+		#require_once  dirname(__FILE__) . '/class-tgm-plugin-activation.php';
+          require_once  dirname(__FILE__) . '/database_interface.php';
+		#require_once dirname(__FILE__) . '/wp-settings-framework.php';
+		require_once dirname(__FILE__) . '/curl.php';
+		require_once dirname(__FILE__) . '/admin/admin-init.php ';
+		
+		#add_action( 'tgmpa_register', array( &$this, 'static_wordpress_required_plugins' ));
+		
+          #$this->wpsf = new WordPressSettingsFramework( dirname(__FILE__) . '/settings/settings.php', $this->option_group );
+		
+		#$this->retrieve_settings();
+		
+		//
+		
 		add_action( 'admin_menu', array(&$this, 'admin_menu'), 99 );
         
 		
-		//synved_option_register('static_wordpress', $settings);
-
+		
 		if (!class_exists("DatabaseInterface")) {
 			throw new Exception("Database interface didn't load");
 		}
 			
 		
 		$this->wp_query = new WP_Query($this->args);
-		global $wpdb;
 		$this->database = new DatabaseInterface($wpdb);
+			
 		
+	}
+
+	
+	function retrieve_settings() {
+		$this->DOM_tags_to_scan['ahref'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'ahref' );
+		$this->DOM_tags_to_scan['img'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'img' );
+		$this->DOM_tags_to_scan['css'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'css' );
+		$this->DOM_tags_to_scan['javascript'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'javascript');
+		
+		$this->wp_objects_to_scan['index'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'index' );
+		$this->wp_objects_to_scan['tags'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'tags' );
+		$this->wp_objects_to_scan['pages'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'pages' );
+		$this->wp_objects_to_scan['posts'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'posts' );
+		$this->wp_objects_to_scan['attachments'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'attachments' );
+		
+		$this->settings['replace_uris'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replace_uri_in_links' );
+		$this->settings['new_uri_prefix'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replacement_uri_prefix' );
+
 	}
 	
 	
+	function rescan_entire_blog() {
+		
+		echo '<pre>';
+	
+		echo '<p>Scanning blog</p>';
+		
+		var_dump($this->settings);
+		
+		$retval = array();
+		
+		$wpi = new Wordpress_Interface();
+		
+		
+		if ($this->wp_objects_to_scan['index'])			
+			$retval = $wpi->get_index_uris($retval);
+			
+		if ($this->wp_objects_to_scan['tags'])
+			$retval = $wpi->get_tag_uris($retval);
+			
+		if ($this->wp_objects_to_scan['pages'])
+			$retval = $wpi->get_page_uris($retval);
+			
+		if ($this->wp_objects_to_scan['posts'])		
+			$retval = $wpi->get_post_uris($retval);
+			
+		if ($this->wp_objects_to_scan['attachments'])	
+			$retval = $wpi->get_attachment_uris($retval);
+
+		$retval = array_unique($retval);
+		
+		echo 'Found ' . count($retval) . ' URIs';
+		
+		foreach($retval as $uri) {			
+			$web_interface = new WebInterface($uri);
+			echo $web_interface->get_mime_type();
+		}
+		
+		echo '</pre>';
+		
+	}
+	
     function admin_menu()
     {
-	   $page_hook = add_menu_page( $this->plugin_name, $this->plugin_name, 'update_core', 'static_wordpress', array(&$this, 'settings_page') );
+	   $page_hook = add_menu_page( $this->plugin_name, $this->plugin_name, 'update_core', $this->slug, array(&$this, 'display_action') );
 	   #add_submenu_page( 'wpsf', __( 'Settings', 'wp-settings-framework' ), __( 'Settings', 'wp-settings-framework' ), 'update_core', 'wpsf', array(&$this, 'settings_page') );
 	   #add_options_page( $this->plugin_name, $this->plugin_name, 'manage_options', 'static_wordpress', array(&$this, 'settings_page'));
 	   
     }
+    
+    
+	function display_action() {
+		if(isset($_GET["rescan_blog"]))
+			$this->rescan_entire_blog = ($_GET["rescan_blog"] == true);
+
+		if ($this->rescan_entire_blog) {		
+			$this->rescan_entire_blog();
+		} else {
+			$this->settings_page();
+		}
+	}
 	
 	function settings_page()
 	    {
 		   ?>
 		   <div class="wrap">
 			  <div id="icon-options-general" class="icon32"></div>
-			  <h2>WP Settings Framework Example</h2>
+			  <h2><?php echo $this->plugin_name;?> settings</h2>
 			  <?php
 			  // Output your settings form
 			  $this->wpsf->settings();
 			  ?>
 		   </div>
+		   <a class="button-primary" target="_blank" href="<?php echo $_SERVER['SCRIPT_NAME'] . "?page=" . $this->slug ; ?>&rescan_blog=1">Rescan blog</a>
 		   <?php
+		   
+		   
 	    }
 	
 
@@ -103,9 +214,9 @@ class StaticWordpress {
         'default_path' => '',                      // Default absolute path to pre-packaged plugins.
         'menu'         => 'static-wordpress-install-plugins', // Menu slug.
         'has_notices'  => true,                    // Show admin notices or not.
-        'dismissable'  => true,                    // If false, a user cannot dismiss the nag message.
-        'dismiss_msg'  => '',                      // If 'dismissable' is false, this message will be output at top of nag.
-        'is_automatic' => false,                   // Automatically activate plugins after installation or not.
+        'dismissable'  => false,                    // If false, a user cannot dismiss the nag message.
+        'dismiss_msg'  => 'There are unmet dependencies',                      // If 'dismissable' is false, this message will be output at top of nag.
+        'is_automatic' => true,                   // Automatically activate plugins after installation or not.
         'message'      => '',                      // Message to output right before the plugins table.
         'strings'      => array(
             'page_title'                      => __( 'Install Required Plugins', 'tgmpa' ),

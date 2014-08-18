@@ -18,6 +18,18 @@ class Wordpress_Interface {
 	private function get_number_of_posts_per_page(){
 		return get_option('posts_per_page');
 	}
+	
+	private function get_attachment_ids(){	
+		return  get_posts('post_type=attachment');
+	}
+	
+	public function get_attachment_uris($retval = array()) {
+		$attachments = $this->get_attachment_ids();
+		foreach($attachments as $attachment) {
+			array_push($retval, wp_get_attachment_url( $attachment->id ));
+		}
+		return retval;
+	}
 
 
 
@@ -55,13 +67,6 @@ class Wordpress_Interface {
 		return $retval;
 	}
 
-	public function get_all_uris() {
-		$retval = $this->get_index_uris();
-		$retval = $this->get_tag_uris($retval);
-		$retval = $this->get_page_uris($retval);
-		$retval = $this->get_post_uris($retval);
-		return $retval;		
-	}
 	
 	
 }
