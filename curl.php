@@ -1,7 +1,5 @@
 <?php
 
-namespace Curl;
-
 class Curl
 {
     const VERSION = '2.1.0';
@@ -52,6 +50,8 @@ class Curl
 
     public function get($url_mixed, $data = array())
     {
+		
+		echo __FILE__ . ':' . __LINE__;
         if (is_array($url_mixed)) {
             $curl_multi = curl_multi_init();
             $this->multi_parent = true;
@@ -102,7 +102,7 @@ class Curl
             $this->setopt(CURLOPT_URL, $this->buildURL($url_mixed, $data));
             $this->setOpt(CURLOPT_CUSTOMREQUEST, 'GET');
             $this->setopt(CURLOPT_HTTPGET, true);
-            return $this->exec();
+            return $this->exec();		  
         }
     }
 

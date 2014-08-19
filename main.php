@@ -11,11 +11,10 @@ Author URI: https://github.com/DrSpaceMonkey/
 
 class StaticWordpress {
 
-	private $wp_query = NULL;
 	protected $database = NULL;
 	private $wpsf;
 	private $plugin_name = 'Static Wordpress';
-	private $option_group = 'static_wordpress_option_group';
+	private $option_group = 'static-wordpress-settings';
 	private $slug = "static_wordpress";
 	private $rescan_entire_blog = false;
 	
@@ -47,44 +46,21 @@ class StaticWordpress {
 		
 		
 		
-		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );
-		require_once  dirname(__FILE__) . '/web_interface.php';
-		#require_once  dirname(__FILE__) . '/class-tgm-plugin-activation.php';
-          require_once  dirname(__FILE__) . '/database_interface.php';
-		#require_once dirname(__FILE__) . '/wp-settings-framework.php';
-		require_once dirname(__FILE__) . '/curl.php';
-		require_once dirname(__FILE__). '/admin/admin-init.php';
+		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
+		require_once dirname(__FILE__) . '/admin/admin-init.php';		
 		
-		
-		//global $redux_demostatic_wordpress_option_group;
-		
-		//var_dump($redux_demostatic_wordpress_option_group);
-		
-		#add_action( 'tgmpa_register', array( &$this, 'static_wordpress_required_plugins' ));
-		
-          #$this->wpsf = new WordPressSettingsFramework( dirname(__FILE__) . '/settings/settings.php', $this->option_group );
-		
-		#$this->retrieve_settings();
-		
-		//
-		
-		//add_action( 'admin_menu', array(&$this, 'admin_menu'), 99 );
-        
-		
-		
+		require_once dirname(__FILE__) . '/web_interface.php';
+		require_once dirname(__FILE__) . '/wordpress_interface.php';
+          require_once dirname(__FILE__) . '/database_interface.php';
+       
 		if (!class_exists("DatabaseInterface")) {
 			throw new Exception("Database interface didn't load");
 		}
-			
-		
-		$this->wp_query = new WP_Query($this->args);
-		$this->database = new DatabaseInterface($wpdb);
-			
-		
 	}
 
 	
 	function retrieve_settings() {
+	/*
 		$this->DOM_tags_to_scan['ahref'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'ahref' );
 		$this->DOM_tags_to_scan['img'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'img' );
 		$this->DOM_tags_to_scan['css'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'css' );
@@ -97,89 +73,112 @@ class StaticWordpress {
 		$this->wp_objects_to_scan['attachments'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'attachments' );
 		
 		$this->settings['replace_uris'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replace_uri_in_links' );
-		$this->settings['new_uri_prefix'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replacement_uri_prefix' );
+		$this->settings['new_uri_prefix'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replacement_uri_prefix' );*/
 
+	}
+	
+	function echo_flush($message){
+		echo '<p>' . $message . '</p>';
+		flush();
 	}
 	
 	
 	function rescan_entire_blog() {
 		
+		global $static_wordpress_settings;
+		global $reduxConfig;
+		
 		echo '<pre>';
 	
 		echo '<p>Scanning blog</p>';
-		
-		var_dump($this->settings);
-		
+				
+				
 		$retval = array();
 		
 		$wpi = new Wordpress_Interface();
 		
+		// $static_wordpress_settings['rescan_blog']
 		
-		if ($this->wp_objects_to_scan['index'])			
-			$retval = $wpi->get_index_uris($retval);
-			
-		if ($this->wp_objects_to_scan['tags'])
+		
+		if ($static_wordpress_settings['harvest_options']['index'] == '1') {			
+			$this->echo_flush('Getting index pages');
+			$retval = $wpi->get_index_uris($retval);			
+			$this->echo_flush('Found ' . count($retval) . ' URIs');
+		}
+				
+		
+		if ($static_wordpress_settings['harvest_options']['tags'] == '1'){	
+			$this->echo_flush('Getting tag URIs');
 			$retval = $wpi->get_tag_uris($retval);
-			
-		if ($this->wp_objects_to_scan['pages'])
+			$this->echo_flush('Found ' . count($retval) . ' URIs');		
+		}
+				
+		if ($static_wordpress_settings['harvest_options']['pages'] == '1') {		
+			$this->echo_flush('Getting page URIs');
 			$retval = $wpi->get_page_uris($retval);
+			$this->echo_flush('Found ' . count($retval) . ' URIs');
+		}
 			
-		if ($this->wp_objects_to_scan['posts'])		
+		if ($static_wordpress_settings['harvest_options']['posts'] == '1') {	
+			$this->echo_flush('Getting post URIs');
 			$retval = $wpi->get_post_uris($retval);
-			
-		if ($this->wp_objects_to_scan['attachments'])	
+			$this->echo_flush('Found ' . count($retval) . ' URIs');
+		}
+		
+		if ($static_wordpress_settings['harvest_options']['attachments'] == '1')	
 			$retval = $wpi->get_attachment_uris($retval);
-
+		
+		
+		$this->echo_flush('Found ' . count($retval) . ' URIs');
+		$this->echo_flush('Removing any duplicate URIs');
+		
 		$retval = array_unique($retval);
+						
+		$this->echo_flush('Found ' . count($retval) . ' URIs');
 		
-		echo 'Found ' . count($retval) . ' URIs';
+		print_r($retval);
+		flush();
 		
-		foreach($retval as $uri) {			
-			$web_interface = new WebInterface($uri);
-			echo $web_interface->get_mime_type();
+		foreach($retval as $u) {
+			try {
+				$this->echo_flush("Fetching $u ...");
+				$web_interface = new WebInterface($u);
+				echo $web_interface->get_mime_type();
+				var_dump($u);
+			} catch (Exception $e){
+				echo '<p>Error loading ' . $u . '</p>';
+			}
+			
+			flush();
+			
 		}
 		
 		echo '</pre>';
+		exit;
 		
 	}
 	
+	
     function admin_menu()
-    {
-	   $page_hook = add_menu_page( $this->plugin_name, $this->plugin_name, 'update_core', $this->slug, array(&$this, 'display_action') );
-	   #add_submenu_page( 'wpsf', __( 'Settings', 'wp-settings-framework' ), __( 'Settings', 'wp-settings-framework' ), 'update_core', 'wpsf', array(&$this, 'settings_page') );
-	   #add_options_page( $this->plugin_name, $this->plugin_name, 'manage_options', 'static_wordpress', array(&$this, 'settings_page'));
-	   
-    }
-    
-    
-	function display_action() {
-		if(isset($_GET["rescan_blog"]))
-			$this->rescan_entire_blog = ($_GET["rescan_blog"] == true);
-
-		if ($this->rescan_entire_blog) {		
-			$this->rescan_entire_blog();
-		} else {
-			$this->settings_page();
+    {	   
+		global $static_wordpress_settings;
+		global $reduxConfig;
+				
+		/*if (is_null($static_wordpress_settings)){
+			throw new Exception("Settings didn't load");
+		}*/
+			
+		
+		if(isset($_GET["rescan_blog_action"])) {
+			$rescan_blog_action = ($_GET["rescan_blog_action"] == 1);
+			$reduxConfig->ReduxFramework->set('rescan_blog', false);
+			$reduxConfig->ReduxFramework->set('rescan_blog_action', true);
+			if ($rescan_blog_action) {		
+				$this->rescan_entire_blog();
+			}
 		}
-	}
-	
-	function settings_page()
-	    {
-		   ?>
-		   <div class="wrap">
-			  <div id="icon-options-general" class="icon32"></div>
-			  <h2><?php echo $this->plugin_name;?> settings</h2>
-			  <?php
-			  // Output your settings form
-			  $this->wpsf->settings();
-			  ?>
-		   </div>
-		   <a class="button-primary" target="_blank" href="<?php echo $_SERVER['SCRIPT_NAME'] . "?page=" . $this->slug ; ?>&rescan_blog=1">Rescan blog</a>
-		   <?php
-		   
-		   
-	    }
-	
+}
+    
 
 	function activate() {
 		global $wpdp;		
@@ -256,3 +255,5 @@ class StaticWordpress {
 }
 
 $wpStaticWordpress = new StaticWordpress();
+#add_action('plugins_loaded', array($wpStaticWordpress, 'admin_init'));  
+add_action('wp_loaded', array($wpStaticWordpress, 'admin_menu'));

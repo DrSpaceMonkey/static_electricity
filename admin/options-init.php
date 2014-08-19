@@ -242,7 +242,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 
 			$this->sections[] = array(
 			'icon'      => 'el-icon-cogs',
-			'title'     => __('Settings', 'redux-framework-demo'),
+			'title'     => 'Settings',
 			'fields'    => array(
 			array(
 			'id'        => 'replace_uri_in_links',
@@ -357,7 +357,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 		}
 
 		public function setHelpTabs() {
-
+/*
 			// Custom page help tabs, displayed using the help API. Tabs are shown in order of definition.
 			$this->args['help_tabs'][] = array(
 			'id'        => 'redux-help-tab-1',
@@ -373,6 +373,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 
 			// Set the help sidebar
 			$this->args['help_sidebar'] = __('<p>This is the sidebar content, HTML is allowed.</p>', 'redux-framework-demo');
+			*/
 		}
 
 		/**
@@ -386,19 +387,22 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			$theme = wp_get_theme(); // For use with some settings. Not necessary.
 
 			$this->args = array(
-			'opt_name' => 'static_wordpress_option_group',
+			'opt_name' => 'static_wordpress_settings',			
+			'global_variable' => 'static_wordpress_settings',			
 			'display_name' => 'Static Wordpress',
 			'page_slug' => 'static_wordpress_options',
 			'page_title' => 'Static Wordpress',
 			'update_notice' => true,
-			'intro_text' => '<p>Intro text</p>',
-			'footer_text' => '<p>This text is displayed below the options panel. It isn\\’t required, but more info is always better! The footer_text field accepts all HTML.</p>',
+			'intro_text' => '',
+			'footer_text' => '',
 			'admin_bar' => true,
 			'menu_type' => 'menu',
+			'allow_sub_menu' => false,
 			'menu_title' => 'Static Wordpress',
 			'page_parent_post_type' => 'your_post_type',
 			'customizer' => true,
-			'default_mark' => '*',
+			'default_show' => true,
+			'default_mark' => '',
 			'hints' => 
 			array(
 			'icon' => 'el-icon-question-sign',
@@ -430,6 +434,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'output' => true,
 			'output_tag' => true,
 			'compiler' => true,
+			#'page_icon' => 'el-icon-cogs',
 			'page_icon' => 'icon-themes',
 			'page_permissions' => 'manage_options',
 			'save_defaults' => true,

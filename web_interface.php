@@ -7,23 +7,30 @@ class WebInterface {
 	private $xmlDOM = NULL;
 	private $curl = NULL;
 	
-	function __construct($uri) {
+	
+	function __construct($uri) {	
+	
+		require_once dirname(__FILE__) . '/curl.php';
 		$this->uri = $uri;
-		
 		$this->curl = new Curl();
+		
 		$this->curl->setUserAgent('');
+		
+		
 		$this->curl->get($uri);
 		
+		echo '<p>' . __FILE__ . ':' . __LINE__ ;
 		
 		if ($this->curl->error) {
 			throw new Exception('Failed to fetch URI.');
 		}
 		
 
-		$this->xmlDOM = WebInterface::get_xml_DOM($this->content);
+		echo '<p>' . __FILE__ . ':' . __LINE__ ;
+		$this->xmlDOM = WebInterface::get_xml_DOM($this->curl->response);
 		if ($this->xmlDOM === false) {
-			throw new Exception('Failed to parse URI.');
-			}
+			throw new Exception('Failed to parse DOM.');
+			}			
 	}
 	
 	public function get_xml() {
