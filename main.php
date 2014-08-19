@@ -56,9 +56,9 @@ class StaticWordpress {
 		require_once dirname(__FILE__). '/admin/admin-init.php';
 		
 		
-		global $redux_demostatic_wordpress_option_group;
+		//global $redux_demostatic_wordpress_option_group;
 		
-		var_dump($redux_demostatic_wordpress_option_group);
+		//var_dump($redux_demostatic_wordpress_option_group);
 		
 		#add_action( 'tgmpa_register', array( &$this, 'static_wordpress_required_plugins' ));
 		
@@ -68,7 +68,7 @@ class StaticWordpress {
 		
 		//
 		
-		add_action( 'admin_menu', array(&$this, 'admin_menu'), 99 );
+		//add_action( 'admin_menu', array(&$this, 'admin_menu'), 99 );
         
 		
 		

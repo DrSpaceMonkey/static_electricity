@@ -5,9 +5,9 @@
   For full documentation, please visit: https://docs.reduxframework.com
  * */
 
-if (!class_exists('Redux_Framework_sample_config')) {
+if (!class_exists('admin_folder_Redux_Framework_config')) {
 
-    class Redux_Framework_sample_config {
+    class admin_folder_Redux_Framework_config {
 
         public $args        = array();
         public $sections    = array();
@@ -21,7 +21,7 @@ if (!class_exists('Redux_Framework_sample_config')) {
             }
 
             // This is needed. Bah WordPress bugs.  ;)
-            if (  true == Redux_Helpers::isTheme(__FILE__) ) {
+            if ( true == Redux_Helpers::isTheme( __FILE__ ) ) {
                 $this->initSettings();
             } else {
                 add_action('plugins_loaded', array($this, 'initSettings'), 10);
@@ -48,11 +48,11 @@ if (!class_exists('Redux_Framework_sample_config')) {
             }
 
             // If Redux is running as a plugin, this will remove the demo notice and links
-            //add_action( 'redux/loaded', array( $this, 'remove_demo' ) );
+            add_action( 'redux/loaded', array( $this, 'remove_demo' ) );
             
             // Function to test the compiler hook and demo CSS output.
             // Above 10 is a priority, but 2 in necessary to include the dynamically generated CSS to be sent to the function.
-            //add_filter('redux/options/'.$this->args['opt_name'].'/compiler', array( $this, 'compiler_action' ), 10, 3);
+            //add_filter('redux/options/'.$this->args['opt_name'].'/compiler', array( $this, 'compiler_action' ), 10, 2);
             
             // Change the arguments after they've been declared, but before the panel is created
             //add_filter('redux/options/'.$this->args['opt_name'].'/args', array( $this, 'change_arguments' ) );
@@ -72,11 +72,8 @@ if (!class_exists('Redux_Framework_sample_config')) {
           It only runs if a field	set with compiler=>true is changed.
 
          * */
-        function compiler_action($options, $css, $changed_values) {
-            echo '<h1>The compiler hook has run!</h1>';
-            echo "<pre>";
-            print_r($changed_values); // Values that have changed since the last save
-            echo "</pre>";
+        function compiler_action($options, $css) {
+            //echo '<h1>The compiler hook has run!';
             //print_r($options); //Option values
             //print_r($css); // Compiler selector CSS values  compiler => array( CSS SELECTORS )
 
@@ -228,10 +225,12 @@ if (!class_exists('Redux_Framework_sample_config')) {
 
             $sampleHTML = '';
             if (file_exists(dirname(__FILE__) . '/info-html.html')) {
-                Redux_Functions::initWpFilesystem();
-                
+                /** @global WP_Filesystem_Direct $wp_filesystem  */
                 global $wp_filesystem;
-
+                if (empty($wp_filesystem)) {
+                    require_once(ABSPATH . '/wp-admin/includes/file.php');
+                    WP_Filesystem();
+                }
                 $sampleHTML = $wp_filesystem->get_contents(dirname(__FILE__) . '/info-html.html');
             }
 
@@ -257,19 +256,11 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         )
                     ),
                     array(
-                        'id'        => 'section-media-checkbox',
-                        'type'      => 'switch',
-                        'title'     => __('Section Show', 'redux-framework-demo'),
-                        'subtitle'  => __('With the "section" field you can create indent option sections.', 'redux-framework-demo'),
-
-                    ),
-                    array(
                         'id'        => 'section-media-start',
                         'type'      => 'section',
                         'title'     => __('Media Options', 'redux-framework-demo'),
                         'subtitle'  => __('With the "section" field you can create indent option sections.', 'redux-framework-demo'),
-                        'indent'    => true, // Indent all options below until the next 'section' option is set.
-                        'required'  => array('section-media-checkbox', "=", 1),
+                        'indent'    => true // Indent all options below until the next 'section' option is set.
                     ),
                     array(
                         'id'        => 'opt-media',
@@ -289,8 +280,7 @@ if (!class_exists('Redux_Framework_sample_config')) {
                     array(
                         'id'        => 'section-media-end',
                         'type'      => 'section',
-                        'indent'    => false, // Indent all options below until the next 'section' option is set.
-                        'required'  => array('section-media-checkbox', "=", 1),
+                        'indent'    => false // Indent all options below until the next 'section' option is set.
                     ),
                     array(
                         'id'        => 'media-no-url',
@@ -389,44 +379,31 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'type'      => 'switch',
                         'title'     => __('Switch Off', 'redux-framework-demo'),
                         'subtitle'  => __('Look, it\'s on!', 'redux-framework-demo'),
-                        //'options' => array('on', 'off'),
                         'default'   => false,
                     ),
                     array(
-                        'id'        => 'switch-parent',
+                        'id'        => 'switch-custom',
                         'type'      => 'switch',
-                        'title'     => __('Switch - Nested Children, Enable to show', 'redux-framework-demo'),
+                        'title'     => __('Switch - Custom Titles', 'redux-framework-demo'),
                         'subtitle'  => __('Look, it\'s on! Also hidden child elements!', 'redux-framework-demo'),
                         'default'   => 0,
                         'on'        => 'Enabled',
                         'off'       => 'Disabled',
                     ),
                     array(
-                        'id'        => 'switch-child1',
+                        'id'        => 'switch-fold',
                         'type'      => 'switch',
-                        'required'  => array('switch-parent', '=', '1'),
-                        'title'     => __('Switch - This and the next switch required for patterns to show', 'redux-framework-demo'),
+                        'required'  => array('switch-custom', '=', '1'),
+                        'title'     => __('Switch - With Hidden Items (NESTED!)', 'redux-framework-demo'),
                         'subtitle'  => __('Also called a "fold" parent.', 'redux-framework-demo'),
                         'desc'      => __('Items set with a fold to this ID will hide unless this is set to the appropriate value.', 'redux-framework-demo'),
                         'default'   => false,
                     ),
                     array(
-                        'id'        => 'switch-child2',
-                        'type'      => 'switch',
-                        'required'  => array('switch-parent', '=', '1'),
-                        'title'     => __('Switch2 - Enable the above switch and this one for patterns to show', 'redux-framework-demo'),
-                        'subtitle'  => __('Also called a "fold" parent.', 'redux-framework-demo'),
-                        'desc'      => __('Items set with a fold to this ID will hide unless this is set to the appropriate value.', 'redux-framework-demo'),
-                        'default'   => false,
-                    ),                    
-                    array(
                         'id'        => 'opt-patterns',
                         'type'      => 'image_select',
                         'tiles'     => true,
-                        'required'  => array(
-                                            array('switch-child1', 'equals', 1),
-                                            array('switch-child2', 'equals', 1),
-                                       ),
+                        'required'  => array('switch-fold', 'equals', '0'),
                         'title'     => __('Images Option (with pattern=>true)', 'redux-framework-demo'),
                         'subtitle'  => __('Select a background pattern.', 'redux-framework-demo'),
                         'default'   => 0,
@@ -495,8 +472,8 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'default'   => 0,
                         'desc'      => __('This allows you to set a json string or array to override multiple preferences in your theme.', 'redux-framework-demo'),
                         'options'   => array(
-                            '1'         => array('alt' => 'Preset 1', 'img' => ReduxFramework::$_url . '../sample/presets/preset1.png', 'presets' => array('switch-on' => 1, 'switch-off' => 1, 'switch-parent' => 1)),
-                            '2'         => array('alt' => 'Preset 2', 'img' => ReduxFramework::$_url . '../sample/presets/preset2.png', 'presets' => '{"opt-slider-label":"1", "opt-slider-text":"10"}'),
+                            '1'         => array('alt' => 'Preset 1', 'img' => ReduxFramework::$_url . '../sample/presets/preset1.png', 'presets' => array('switch-on' => 1, 'switch-off' => 1, 'switch-custom' => 1)),
+                            '2'         => array('alt' => 'Preset 2', 'img' => ReduxFramework::$_url . '../sample/presets/preset2.png', 'presets' => '{"slider1":"1", "slider2":"0", "switch-on":"0"}'),
                         ),
                     ),
                     array(
@@ -515,7 +492,7 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         //'color'         => false,
                         //'preview'       => false, // Disable the previewer
                         'all_styles'    => true,    // Enable all Google Font style/weight variations to be added to the page
-                        'output'        => array('h2.site-description, .entry-title'), // An array of CSS selectors to apply this font style to dynamically
+                        'output'        => array('h2.site-description'), // An array of CSS selectors to apply this font style to dynamically
                         'compiler'      => array('h2.site-description-compiler'), // An array of CSS selectors to apply this font style to dynamically
                         'units'         => 'px', // Defaults to px
                         'subtitle'      => __('Typography option with each property can be called individually.', 'redux-framework-demo'),
@@ -526,6 +503,7 @@ if (!class_exists('Redux_Framework_sample_config')) {
                             'google'        => true,
                             'font-size'     => '33px',
                             'line-height'   => '40px'),
+                        'preview' => array('text' => 'ooga booga'),
                     ),
                 ),
             );
@@ -573,7 +551,6 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'desc'      => 'Possible modes can be found at <a href="http://ace.c9.io" target="_blank">http://ace.c9.io/</a>.',
                         'default'   => "#header{\nmargin: 0 auto;\n}"
                     ),
-                    /*
                     array(
                         'id'        => 'opt-ace-editor-js',
                         'type'      => 'ace_editor',
@@ -594,7 +571,6 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'desc'      => 'Possible modes can be found at <a href="http://ace.c9.io" target="_blank">http://ace.c9.io/</a>.',
                         'default'   => '<?php\nisset ( $redux ) ? true : false;\n?>'
                     ),
-                    */
                     array(
                         'id'        => 'opt-editor',
                         'type'      => 'editor',
@@ -615,7 +591,6 @@ if (!class_exists('Redux_Framework_sample_config')) {
             $this->sections[] = array(
                 'icon'      => 'el-icon-website',
                 'title'     => __('Styling Options', 'redux-framework-demo'),
-                'subsection' => true,
                 'fields'    => array(
                     array(
                         'id'        => 'opt-select-stylesheet',
@@ -1054,9 +1029,9 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'subtitle'  => __('Define and reorder these however you want.', 'redux-framework-demo'),
                         'desc'      => __('This is the description field, again good for additional info.', 'redux-framework-demo'),
                         'options'   => array(
-                            'si1' => false,
-                            'si2' => true,
-                            'si3' => false,
+                            'si1' => 'Item 1',
+                            'si2' => 'Item 2',
+                            'si3' => 'Item 3',
                         )
                     ),
                 )
@@ -1333,6 +1308,7 @@ if (!class_exists('Redux_Framework_sample_config')) {
                     array(
                         'id'        => 'opt-info-field',
                         'type'      => 'info',
+                        'required'  => array('18', 'equals', array('1', '2')),
                         'desc'      => __('This is the info field, if you want to break sections up.', 'redux-framework-demo')
                     ),
                     array(
@@ -1415,51 +1391,9 @@ if (!class_exists('Redux_Framework_sample_config')) {
                         'desc'      => __('This is created with a callback function, so anything goes in this field. Make sure to define the function though.', 'redux-framework-demo'),
                         'callback'  => 'redux_my_custom_field'
                     ),
-                    
-                    array(
-                        'id'        => 'opt-customizer-only-in-section',
-                        'type'      => 'select',
-                        'title'     => __('Customizer Only Option', 'redux-framework-demo'),
-                        'subtitle'  => __('The subtitle is NOT visible in customizer', 'redux-framework-demo'),
-                        'desc'      => __('The field desc is NOT visible in customizer.', 'redux-framework-demo'),
-                        'customizer_only'   => true,
-
-                        //Must provide key => value pairs for select options
-                        'options'   => array(
-                            '1' => 'Opt 1',
-                            '2' => 'Opt 2',
-                            '3' => 'Opt 3'
-                        ),
-                        'default'   => '2'
-                    ),                    
                 )
             );
 
-            $this->sections[] = array(
-                'icon'              => 'el-icon-list-alt',
-                'title'             => __('Customizer Only', 'redux-framework-demo'),
-                'desc'              => __('<p class="description">This Section should be visible only in Customizer</p>', 'redux-framework-demo'),
-                'customizer_only'   => true,
-                'fields'    => array(
-                    array(
-                        'id'        => 'opt-customizer-only',
-                        'type'      => 'select',
-                        'title'     => __('Customizer Only Option', 'redux-framework-demo'),
-                        'subtitle'  => __('The subtitle is NOT visible in customizer', 'redux-framework-demo'),
-                        'desc'      => __('The field desc is NOT visible in customizer.', 'redux-framework-demo'),
-                        'customizer_only'   => true,
-
-                        //Must provide key => value pairs for select options
-                        'options'   => array(
-                            '1' => 'Opt 1',
-                            '2' => 'Opt 2',
-                            '3' => 'Opt 3'
-                        ),
-                        'default'   => '2'
-                    ),
-                )
-            );            
-            
             $this->sections[] = array(
                 'title'     => __('Import / Export', 'redux-framework-demo'),
                 'desc'      => __('Import and Export your Redux Framework settings from file, text or URL.', 'redux-framework-demo'),
@@ -1531,82 +1465,57 @@ if (!class_exists('Redux_Framework_sample_config')) {
             $theme = wp_get_theme(); // For use with some settings. Not necessary.
 
             $this->args = array(
-                // TYPICAL -> Change these values as you need/desire
-                'opt_name'          => 'redux_demo',            // This is where your data is stored in the database and also becomes your global variable name.
-                'display_name'      => $theme->get('Name'),     // Name that appears at the top of your panel
-                'display_version'   => $theme->get('Version'),  // Version that appears at the top of your panel
-                'menu_type'         => 'menu',                  //Specify if the admin menu should appear or not. Options: menu or submenu (Under appearance only)
-                'allow_sub_menu'    => true,                    // Show the sections below the admin menu item or not
-                'menu_title'        => __('Sample Options', 'redux-framework-demo'),
-                'page_title'        => __('Sample Options', 'redux-framework-demo'),
-                
-                // You will need to generate a Google API key to use this feature.
-                // Please visit: https://developers.google.com/fonts/docs/developer_api#Auth
-                'google_api_key' => '', // Must be defined to add google fonts to the typography module
-                
-                'async_typography'  => true,                    // Use a asynchronous font on the front end or font string
-                //'disable_google_fonts_link' => true,                    // Disable this in case you want to create your own google fonts loader
-                'admin_bar'         => true,                    // Show the panel pages on the admin bar
-                'global_variable'   => '',                      // Set a different name for your global variable other than the opt_name
-                'dev_mode'          => true,                    // Show the time the page took to load, etc
-                'customizer'        => true,                    // Enable basic customizer support
-                //'open_expanded'     => true,                    // Allow you to start the panel in an expanded way initially.
-                //'disable_save_warn' => true,                    // Disable the save warning when a user changes a field
-
-                // OPTIONAL -> Give you extra features
-                'page_priority'     => null,                    // Order where the menu appears in the admin area. If there is any conflict, something will not show. Warning.
-                'page_parent'       => 'themes.php',            // For a full list of options, visit: http://codex.wordpress.org/Function_Reference/add_submenu_page#Parameters
-                'page_permissions'  => 'manage_options',        // Permissions needed to access the options panel.
-                'menu_icon'         => '',                      // Specify a custom URL to an icon
-                'last_tab'          => '',                      // Force your panel to always open to a specific tab (by id)
-                'page_icon'         => 'icon-themes',           // Icon displayed in the admin panel next to your menu_title
-                'page_slug'         => '_options',              // Page slug used to denote the panel
-                'save_defaults'     => true,                    // On load save the defaults to DB before user clicks save or not
-                'default_show'      => false,                   // If true, shows the default value next to each field that is not the default value.
-                'default_mark'      => '',                      // What to print by the field's title if the value shown is default. Suggested: *
-                'show_import_export' => true,                   // Shows the Import/Export panel when not used as a field.
-                
-                // CAREFUL -> These options are for advanced use only
-                'transient_time'    => 60 * MINUTE_IN_SECONDS,
-                'output'            => true,                    // Global shut-off for dynamic CSS output by the framework. Will also disable google fonts output
-                'output_tag'        => true,                    // Allows dynamic CSS to be generated for customizer and google fonts, but stops the dynamic CSS from going to the head
-                // 'footer_credit'     => '',                   // Disable the footer credit of Redux. Please leave if you can help it.
-                
-                // FUTURE -> Not in use yet, but reserved or partially implemented. Use at your own risk.
-                'database'              => '', // possible: options, theme_mods, theme_mods_expanded, transient. Not fully functional, warning!
-                'system_info'           => false, // REMOVE
-
-                // HINTS
-                'hints' => array(
-                    'icon'          => 'icon-question-sign',
-                    'icon_position' => 'right',
-                    'icon_color'    => 'lightgray',
-                    'icon_size'     => 'normal',
-                    'tip_style'     => array(
-                        'color'         => 'light',
-                        'shadow'        => true,
-                        'rounded'       => false,
-                        'style'         => '',
+                'opt_name' => 'static_wordpress_option_group',
+                'display_name' => 'Static Wordpress',
+                'page_slug' => 'static_wordpress_options',
+                'page_title' => 'Static Wordpress',
+                'update_notice' => true,
+                'intro_text' => '<p>Intro text</p>',
+                'footer_text' => '<p>This text is displayed below the options panel. It isn\\’t required, but more info is always better! The footer_text field accepts all HTML.</p>',
+                'admin_bar' => true,
+                'menu_type' => 'menu',
+                'menu_title' => 'Static Wordpress',
+                'page_parent_post_type' => 'your_post_type',
+                'customizer' => true,
+                'default_mark' => '*',
+                'hints' => 
+                array(
+                  'icon' => 'el-icon-question-sign',
+                  'icon_position' => 'right',
+                  'icon_size' => 'normal',
+                  'tip_style' => 
+                  array(
+                    'color' => 'light',
+                  ),
+                  'tip_position' => 
+                  array(
+                    'my' => 'top left',
+                    'at' => 'bottom right',
+                  ),
+                  'tip_effect' => 
+                  array(
+                    'show' => 
+                    array(
+                      'duration' => '500',
+                      'event' => 'mouseover',
                     ),
-                    'tip_position'  => array(
-                        'my' => 'top left',
-                        'at' => 'bottom right',
+                    'hide' => 
+                    array(
+                      'duration' => '500',
+                      'event' => 'mouseleave unfocus',
                     ),
-                    'tip_effect'    => array(
-                        'show'          => array(
-                            'effect'        => 'slide',
-                            'duration'      => '500',
-                            'event'         => 'mouseover',
-                        ),
-                        'hide'      => array(
-                            'effect'    => 'slide',
-                            'duration'  => '500',
-                            'event'     => 'click mouseleave',
-                        ),
-                    ),
-                )
-            );
-
+                  ),
+                ),
+                'output' => true,
+                'output_tag' => true,
+                'compiler' => true,
+                'page_icon' => 'icon-themes',
+                'page_permissions' => 'manage_options',
+                'save_defaults' => true,
+                'show_import_export' => true,
+                'transient_time' => '3600',
+                'network_sites' => true,
+              );
 
             // SOCIAL ICONS -> Setup custom links in the footer for quick links in your panel footer icons.
             $this->args['share_icons'][] = array(
@@ -1631,33 +1540,19 @@ if (!class_exists('Redux_Framework_sample_config')) {
                 'icon'  => 'el-icon-linkedin'
             );
 
-            // Panel Intro text -> before the form
-            if (!isset($this->args['global_variable']) || $this->args['global_variable'] !== false) {
-                if (!empty($this->args['global_variable'])) {
-                    $v = $this->args['global_variable'];
-                } else {
-                    $v = str_replace('-', '_', $this->args['opt_name']);
-                }
-                $this->args['intro_text'] = sprintf(__('<p>Did you know that Redux sets a global variable for you? To access any of your saved options from within your code you can use your global variable: <strong>$%1$s</strong></p>', 'redux-framework-demo'), $v);
-            } else {
-                $this->args['intro_text'] = __('<p>This text is displayed above the options panel. It isn\'t required, but more info is always better! The intro_text field accepts all HTML.</p>', 'redux-framework-demo');
-            }
-
-            // Add content after the form.
-            $this->args['footer_text'] = __('<p>This text is displayed below the options panel. It isn\'t required, but more info is always better! The footer_text field accepts all HTML.</p>', 'redux-framework-demo');
         }
 
     }
     
     global $reduxConfig;
-    $reduxConfig = new Redux_Framework_sample_config();
+    $reduxConfig = new admin_folder_Redux_Framework_config();
 }
 
 /**
   Custom function for the callback referenced above
  */
-if (!function_exists('redux_my_custom_field')):
-    function redux_my_custom_field($field, $value) {
+if (!function_exists('admin_folder_my_custom_field')):
+    function admin_folder_my_custom_field($field, $value) {
         print_r($field);
         echo '<br/>';
         print_r($value);
@@ -1667,8 +1562,8 @@ endif;
 /**
   Custom function for the callback validation referenced above
  * */
-if (!function_exists('redux_validate_callback_function')):
-    function redux_validate_callback_function($field, $value, $existing_value) {
+if (!function_exists('admin_folder_validate_callback_function')):
+    function admin_folder_validate_callback_function($field, $value, $existing_value) {
         $error = false;
         $value = 'just testing';
 
