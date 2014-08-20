@@ -241,6 +241,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'type' => 'divide',
 			);
 
+
 			$this->sections[] = array(
 			'icon'      => 'el-icon-cogs',
 			'title'     => 'Settings',
@@ -264,22 +265,22 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'default'   => $home_url,
 			),			
 			array(
-			'id'        => 'working_directory',
+			'id'        => 'index_page_filename',
+			'type'      => 'text',
+			'title'     => 'Index page filename',
+			'subtitle'  => '',
+			'desc'      => 'Index files will be given this name',
+			'default'   => 'index.html',
+			),					
+			array(
+			'id'        => 'static_electricity_working_directory',
 			'type'      => 'text',
 			'title'     => 'Working directory',
 			'subtitle'  => "Directory where the static files will be built",
 			'desc'      => 'Please use absolute paths, and not relative paths',
-			'default'   => trailingslashit(sys_get_temp_dir()) . 'static_wordpress/',
+			'default'   => trailingslashit(sys_get_temp_dir()) . 'static_electricity/',
 			),			
-			$static_file_interface->get_redux_section(),			
-			array(
-			'id'        => 'target_directory',
-			'type'      => 'text',
-			'title'     => 'Target directory',
-			'subtitle'  => "Directory where the static files will be moved after the static site is built",
-			'desc'      => 'Please use absolute paths, and not relative paths',
-			'default'   =>  dirname(trailingslashit(__DIR__) . '/static/'),
-			),				
+			$static_file_interface->get_file_engine_selector(),
 			array(
 			'id'        => 'harvest_options',
 			'type'      => 'checkbox',
@@ -372,7 +373,12 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
                     ),			
 			)
 			);
-
+			
+			$file_engines = $static_file_interface->get_file_engine_sections();
+				foreach($file_engines as $sec) {
+					$this->sections[] = $sec;
+			}
+			
 			/**
 		*  Note here I used a 'heading' in the sections array construct
 		*  This allows you to use a different title on your options page
@@ -412,18 +418,18 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			$theme = wp_get_theme(); // For use with some settings. Not necessary.
 
 			$this->args = array(
-			'opt_name' => 'static_wordpress_settings',			
-			'global_variable' => 'static_wordpress_settings',			
-			'display_name' => 'Static Wordpress',
-			'page_slug' => 'static_wordpress_options',
-			'page_title' => 'Static Wordpress',
+			'opt_name' => 'static_electricity_settings',
+			'global_variable' => 'static_electricity_settings',			
+			'display_name' => 'Static Electricity',
+			'page_slug' => 'static_electricity_options',
+			'page_title' => 'Static Electricity',
 			'update_notice' => true,
 			'intro_text' => '',
 			'footer_text' => '',
 			'admin_bar' => true,
 			'menu_type' => 'menu',
 			'allow_sub_menu' => false,
-			'menu_title' => 'Static Wordpress',
+			'menu_title' => 'Static Electricity',
 			'page_parent_post_type' => 'your_post_type',
 			'customizer' => true,
 			'default_show' => true,
@@ -458,14 +464,16 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			),
 			'output' => true,
 			'output_tag' => true,
+			'open_expanded' => false,
 			'compiler' => true,
 			#'page_icon' => 'el-icon-cogs',
 			'page_icon' => 'icon-themes',
 			'page_permissions' => 'manage_options',
 			'save_defaults' => true,
-			'show_import_export' => true,
+			'show_import_export' => false,
 			'transient_time' => '3600',
 			'network_sites' => true,
+			'admin_bar_icon' => 'dashicons-admin-generic'
 			);
 
 

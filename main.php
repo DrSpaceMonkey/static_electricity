@@ -1,7 +1,7 @@
 <?php
 /*
-Plugin Name: Static Wordpress
-Plugin URI: https://github.com/DrSpaceMonkey/static_wordpress/
+Plugin Name: Static Electricity
+Plugin URI: https://github.com/DrSpaceMonkey/static_electricity/
 Description: Generates a static HTML version of your Wordpress site
 Author: Steven Allen
 Version: 1.0
@@ -13,9 +13,8 @@ class StaticWordpress {
 
 	protected $database = NULL;
 	private $wpsf;
-	private $plugin_name = 'Static Wordpress';
-	private $option_group = 'static-wordpress-settings';
-	private $slug = "static_wordpress";
+	private $plugin_name = 'Static Electricity';
+	private $slug = "static_electricity";
 	private $rescan_entire_blog = false;
 	
 	
@@ -43,20 +42,12 @@ class StaticWordpress {
 	
 	public function __construct() {		
 		global $wpdb;
-		
-		
-		
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
 		require_once dirname(__FILE__) . '/admin/admin-init.php';
-		
           require_once dirname(__FILE__) . '/FileInterface/base_file_interface.php';
 		require_once dirname(__FILE__) . '/web_interface.php';
 		require_once dirname(__FILE__) . '/wordpress_interface.php';
           require_once dirname(__FILE__) . '/database_interface.php';
-       
-		if (!class_exists("DatabaseInterface")) {
-			throw new Exception("Database interface didn't load");
-		}
 	}
 
 	
@@ -86,36 +77,36 @@ class StaticWordpress {
 	
 	function scan_pages() {		
 		$retval = array();
-		global $static_wordpress_settings;
+		global $static_electricity_settings;
 		global $reduxConfig;	
 		$wpi = new Wordpress_Interface();
 		
-		if ($static_wordpress_settings['harvest_options']['index'] == '1') {			
+		if ($static_electricity_settings['harvest_options']['index'] == '1') {			
 			$this->echo_flush('Getting index pages');
 			$retval = $wpi->get_index_uris($retval);			
 			$this->echo_flush('Found ' . count($retval) . ' URIs');
 		}
 				
 		
-		if ($static_wordpress_settings['harvest_options']['tags'] == '1'){	
+		if ($static_electricity_settings['harvest_options']['tags'] == '1'){	
 			$this->echo_flush('Getting tag URIs');
 			$retval = $wpi->get_tag_uris($retval);
 			$this->echo_flush('Found ' . count($retval) . ' URIs');		
 		}
 				
-		if ($static_wordpress_settings['harvest_options']['pages'] == '1') {		
+		if ($static_electricity_settings['harvest_options']['pages'] == '1') {		
 			$this->echo_flush('Getting page URIs');
 			$retval = $wpi->get_page_uris($retval);
 			$this->echo_flush('Found ' . count($retval) . ' URIs');
 		}
 			
-		if ($static_wordpress_settings['harvest_options']['posts'] == '1') {	
+		if ($static_electricity_settings['harvest_options']['posts'] == '1') {	
 			$this->echo_flush('Getting post URIs');
 			$retval = $wpi->get_post_uris($retval);
 			$this->echo_flush('Found ' . count($retval) . ' URIs');
 		}
 		
-		if ($static_wordpress_settings['harvest_options']['attachments'] == '1')	 {	
+		if ($static_electricity_settings['harvest_options']['attachments'] == '1')	 {	
 			$this->echo_flush('Getting attachment URIs');
 			$retval = $wpi->get_attachment_uris($retval);
 			$this->echo_flush('Found ' . count($retval) . ' URIs');
@@ -125,61 +116,88 @@ class StaticWordpress {
 	}
 	
 	
-	function rescan_entire_blog() {
-		
-		global $static_wordpress_settings;
-		global $reduxConfig;
-		
-		echo '<pre>';
-	
-		echo '<p>Scanning blog</p>';
-				
-				
-		
-				
-		
-		// $static_wordpress_settings['rescan_blog']
-		
-
-		$uris = $this->scan_pages();
-		
-		$this->echo_flush('Removing any duplicate URIs');
-		
-		$uris = array_unique($uris);
-						
-		$this->echo_flush('Found ' . count($uris) . ' URIs');
-		
+	function process_uris($uris) {
+		$dbi = new DatabaseInterface();
 		foreach($uris as $u) {
 			try {
 				$this->echo_flush("Fetching $u ...");
 				$web_interface = new WebInterface($u);
 				$md5_result = md5($web_interface->get_content());
-				
-				
-				
+				if ($dbi->uri_is_stale($u, $md5_result)) {
+					$filename = $this->get_file_name_from_uri($u);
+					$directory = $this->get_directory_name_from_uri($u);					
+					$this->echo_flush("$directory$filename");
+				}
 				
 			} catch (Exception $e){
 				$this->echo_flush('Error loading ' . $u);
-			}
-			
-			flush();
-			
+			}			
 		}
+		
+	}
+	
+	function get_file_name_from_uri($path) {
+		global $static_electricity_settings;		
+		$uri_parts = parse_url($path);
+		$basename = basename($uri_parts['path']);
+		if (strpos($basename,'.') !== false) {
+			return $basename;
+		} else {
+			return $static_electricity_settings['index_page_filename'];
+		}
+	}
+	
+	function get_directory_name_from_uri($path) {	
+		$uri_parts = parse_url($path);
+		$basename = basename($uri_parts['path']);
+		if (strpos($basename,'.') !== false) {			
+			return trailingslashit(dirname($basename));
+		} else {
+			return ltrim(trailingslashit($uri_parts['path']), '/');
+		}
+	
+	}
+	
+	function save_to_working_directory($path_name, $file_name) {
+		
+	}
+	
+	
+	
+	function rescan_entire_blog() {
+		
+		global $static_electricity_settings;
+		global $reduxConfig;
+		
+		echo '<pre>';
+	
+		echo '<p>Scanning blog</p>';
+		// $static_electricity_settings['rescan_blog']
+		$uris = $this->scan_pages();		
+		$this->echo_flush('Removing any duplicate URIs');		
+		$uris = array_unique($uris);						
+		$this->echo_flush('Found ' . count($uris) . ' URIs');
+		$this->process_uris($uris);
 		
 		echo '</pre>';
 		exit;
 		
 	}
 	
-	
     function admin_menu()
     {	   
-		global $static_wordpress_settings;
+		global $static_electricity_settings;
 		global $reduxConfig;
 				
-		/*if (is_null($static_wordpress_settings)){
+		/*if (is_null($static_electricity_settings)){
 			throw new Exception("Settings didn't load");
 		}*/
+		
+		if ($static_electricity_settings['clear_checksum']) {
+			$db = new DatabaseInterface($wpdb);
+			$db->clear_checksums();
+			$reduxConfig->ReduxFramework->set('clear_checksum', false);
+		}
 			
 		
 		if(isset($_GET["rescan_blog_action"])) {
@@ -204,7 +222,7 @@ class StaticWordpress {
 	}
 
 
-	function static_wordpress_required_plugins() {
+	function static_electricity_required_plugins() {
 
     /**
      * Array of plugin arrays. Required keys are name and slug.
@@ -229,7 +247,7 @@ class StaticWordpress {
      * end of each line for what each argument will be.
      */
     $config = array(
-        'id'           => 'static_wordpress',                 // Unique ID for hashing notices for multiple instances of TGMPA.
+        'id'           => 'static_electricity',                 // Unique ID for hashing notices for multiple instances of TGMPA.
         'default_path' => '',                      // Default absolute path to pre-packaged plugins.
         'menu'         => 'static-wordpress-install-plugins', // Menu slug.
         'has_notices'  => true,                    // Show admin notices or not.

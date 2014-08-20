@@ -13,7 +13,12 @@ namespace FileInterface;
 	}
 	
 	class FileInterface {
-		private $namespace_classes;
+		
+		private $class_names = array();
+		private $interface_classes = array();
+		private $default_selection = NULL;
+		private $options_array = array();
+		
 		public function __construct(){	
 			$directory = __DIR__;		
 			require_once trailingslashit($directory) . 'NameSpaceFinder.php';
@@ -24,30 +29,38 @@ namespace FileInterface;
 					require_once $full_path;
 				}
 			}
+			$this->load_file_engines();
+		}
+		
+		public function get_file_engine_sections(){
+			$retval = array();
+			foreach($this->interface_classes as $c){
+				$retval[] = $c->get_redux_options();
+			}
+			return $retval;
+			
+		}
+		
+		private function load_file_engines() {
+		
 			$namespace_finder = new \NameSpaceFinder();
-			$this->namespace_classes = $namespace_finder->getClassesOfNameSpace('FileInterface');
-			$this->namespace_classes = array_diff($this->namespace_classes,
+			$this->class_names = $namespace_finder->getClassesOfNameSpace('FileInterface');
+			$this->class_names = array_diff($this->class_names,
 				array(
 					'FileInterface\BaseFileInterface',
 					'FileInterface\FileInterface'				
 				));
-			
+				
+				
+			foreach($this->class_names as $c) {
+				$interface = new $c();
+				$this->options_array[$c] = $interface->get_display_name() ;
+				if (is_null($this->default_selection)) $this->default_selection = $interface;
+				$this->interface_classes[] = $interface;
+			}
 		}
 		
-		public function get_redux_section(){
-		
-			$options_array = array();
-			print_r($this->namespace_classes);
-			$x = 0;
-			foreach($this->namespace_classes as $c) {
-				$interface = new $c();
-				print_r($interface->get_display_name());
-				$options_array[$c] = $interface->get_display_name() ;
-				if (!is_set($default_selection)) $default_selection = $c;
-			}
-			
-			print_r($options_array);
-			
+		public function get_file_engine_selector(){			
 			$fields = array(
 			    'id'       => 'static-wordpress-file-interface-select',
 			    'type'     => 'select',
@@ -55,10 +68,9 @@ namespace FileInterface;
 			    'subtitle' => '',
 			    'desc'     => '',
 			    // Must provide key => value pairs for select options
-			    'options'  => $options_array,
-			    'default'  => $default_selection,
-			);
-			
+			    'options'  => $this->options_array,
+			    'default'  => get_class($this->default_selection),
+			);			
 			return $fields;
 		}
 		

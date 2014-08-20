@@ -1,7 +1,7 @@
 <?php
 
 class DatabaseInterface {
-	private $db_version_key = "static_wordpress_db_version";
+	private $db_version_key = "static_electricity_db_version";
 	private $db_version = "1.0";
 	private $wpdb = NULL;
 	private $page_checksum_table_name = NULL;
@@ -14,7 +14,7 @@ class DatabaseInterface {
 		if (strcasecmp($prefix, "") == 0)
 			throw new Exception ("Something went wrong with Wordpress:");
 		
-		$this->page_checksum_table_name = $prefix . "static_wordpress_page_checksums"; 
+		$this->page_checksum_table_name = $prefix . "static_electricity_page_checksums"; 
 	}
 	
 	public function save_uri_checksum($uri, $checksum) {			
@@ -35,7 +35,9 @@ class DatabaseInterface {
 	
 	}
 	
-	#private function save_
+	public function clear_checksums() {
+		$this->truncate_table($this->page_checksum_table_name);
+	}
 	
 	private function truncate_table($table_name) {
 		global $wpdb;

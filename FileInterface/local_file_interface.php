@@ -3,8 +3,22 @@
 namespace FileInterface {
 
 	class LocalFileInterface extends BaseFileInterface {
-
-
+		
+		private $default_directory;
+		
+		public function __construct(){
+			
+			
+			$this->default_directory = dirname(__DIR__) . '/static/';
+			
+			
+			if (!is_dir($this->default_directory)){
+				$this->create_directory($this->default_directory);				
+			}
+			$this->create_directory = realpath($this->create_directory);
+		}
+	
+	
 		public function move_file($source, $destination) {
 			rename ( $source , $destination );
 		}
@@ -37,6 +51,23 @@ namespace FileInterface {
 		}
 		
 		public function get_redux_options() {
+			$retval = array(
+			    'title'   =>  $this->get_display_name(),
+			    'icon'    => 'el-icon-cogs',
+			    'heading' => 'Local file storage settings',
+			    'desc'    => '',
+			    'fields'  => array(		
+					array(
+					'id'        => 'local-file-target-directory',
+					'type'      => 'text',
+					'title'     => 'Target directory',
+					'subtitle'  => "Directory where the static files will be moved after the static site is built",
+					'desc'      => 'Please use absolute paths, and not relative paths',
+					'default'   =>  $this->default_directory,
+					),		
+			    ),
+			);
+			return $retval;
 		}
 
 
