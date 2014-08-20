@@ -19,14 +19,12 @@ class WebInterface {
 		
 		$this->curl->get($uri);
 		
-		echo '<p>' . __FILE__ . ':' . __LINE__ ;
 		
 		if ($this->curl->error) {
 			throw new Exception('Failed to fetch URI.');
 		}
 		
 
-		echo '<p>' . __FILE__ . ':' . __LINE__ ;
 		$this->xmlDOM = WebInterface::get_xml_DOM($this->curl->response);
 		if ($this->xmlDOM === false) {
 			throw new Exception('Failed to parse DOM.');
@@ -99,6 +97,7 @@ class WebInterface {
 		
 		return $retval;
 	}
+	
 	
 		
 	public static function relative_to_absolute_uri($rel, $base)

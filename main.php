@@ -47,8 +47,9 @@ class StaticWordpress {
 		
 		
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
-		require_once dirname(__FILE__) . '/admin/admin-init.php';		
+		require_once dirname(__FILE__) . '/admin/admin-init.php';
 		
+          require_once dirname(__FILE__) . '/FileInterface/base_file_interface.php';
 		require_once dirname(__FILE__) . '/web_interface.php';
 		require_once dirname(__FILE__) . '/wordpress_interface.php';
           require_once dirname(__FILE__) . '/database_interface.php';
@@ -80,25 +81,14 @@ class StaticWordpress {
 	function echo_flush($message){
 		echo '<p>' . $message . '</p>';
 		flush();
+		ob_flush();
 	}
 	
-	
-	function rescan_entire_blog() {
-		
-		global $static_wordpress_settings;
-		global $reduxConfig;
-		
-		echo '<pre>';
-	
-		echo '<p>Scanning blog</p>';
-				
-				
+	function scan_pages() {		
 		$retval = array();
-		
+		global $static_wordpress_settings;
+		global $reduxConfig;	
 		$wpi = new Wordpress_Interface();
-		
-		// $static_wordpress_settings['rescan_blog']
-		
 		
 		if ($static_wordpress_settings['harvest_options']['index'] == '1') {			
 			$this->echo_flush('Getting index pages');
@@ -125,28 +115,51 @@ class StaticWordpress {
 			$this->echo_flush('Found ' . count($retval) . ' URIs');
 		}
 		
-		if ($static_wordpress_settings['harvest_options']['attachments'] == '1')	
+		if ($static_wordpress_settings['harvest_options']['attachments'] == '1')	 {	
+			$this->echo_flush('Getting attachment URIs');
 			$retval = $wpi->get_attachment_uris($retval);
+			$this->echo_flush('Found ' . count($retval) . ' URIs');
+		}
 		
+		return $retval;
+	}
+	
+	
+	function rescan_entire_blog() {
 		
-		$this->echo_flush('Found ' . count($retval) . ' URIs');
+		global $static_wordpress_settings;
+		global $reduxConfig;
+		
+		echo '<pre>';
+	
+		echo '<p>Scanning blog</p>';
+				
+				
+		
+				
+		
+		// $static_wordpress_settings['rescan_blog']
+		
+
+		$uris = $this->scan_pages();
+		
 		$this->echo_flush('Removing any duplicate URIs');
 		
-		$retval = array_unique($retval);
+		$uris = array_unique($uris);
 						
-		$this->echo_flush('Found ' . count($retval) . ' URIs');
+		$this->echo_flush('Found ' . count($uris) . ' URIs');
 		
-		print_r($retval);
-		flush();
-		
-		foreach($retval as $u) {
+		foreach($uris as $u) {
 			try {
 				$this->echo_flush("Fetching $u ...");
 				$web_interface = new WebInterface($u);
-				echo $web_interface->get_mime_type();
-				var_dump($u);
+				$md5_result = md5($web_interface->get_content());
+				
+				
+				
+				
 			} catch (Exception $e){
-				echo '<p>Error loading ' . $u . '</p>';
+				$this->echo_flush('Error loading ' . $u);
 			}
 			
 			flush();

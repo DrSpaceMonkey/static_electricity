@@ -234,8 +234,9 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 				}
 				$sampleHTML = $wp_filesystem->get_contents(dirname(__FILE__) . '/info-html.html');
 			}
-
-
+			
+			global $static_file_interface;
+			
 			$this->sections[] = array(
 			'type' => 'divide',
 			);
@@ -259,8 +260,25 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'required'  => array('replace_uri_in_links', '=', '1'),
 			'title'     => 'URI prefix',
 			'subtitle'  => "Hostname to replace $home_url with",
-			'desc'      => 'Use a single slash (/) to turn absolute links to relative',
-			'default'   => "/",
+			'desc'      => 'Use a single slash (/) to turn absolute paths into relative paths',
+			'default'   => $home_url,
+			),			
+			array(
+			'id'        => 'working_directory',
+			'type'      => 'text',
+			'title'     => 'Working directory',
+			'subtitle'  => "Directory where the static files will be built",
+			'desc'      => 'Please use absolute paths, and not relative paths',
+			'default'   => trailingslashit(sys_get_temp_dir()) . 'static_wordpress/',
+			),			
+			$static_file_interface->get_redux_section(),			
+			array(
+			'id'        => 'target_directory',
+			'type'      => 'text',
+			'title'     => 'Target directory',
+			'subtitle'  => "Directory where the static files will be moved after the static site is built",
+			'desc'      => 'Please use absolute paths, and not relative paths',
+			'default'   =>  dirname(trailingslashit(__DIR__) . '/static/'),
 			),				
 			array(
 			'id'        => 'harvest_options',
@@ -339,10 +357,17 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			),
 
                     array(
+                        'id'        => 'clear_checksum',
+                        'type'      => 'switch',
+                        'title'     => 'Rebuild entire blog',
+                        'desc'      => 'If you set this value, the entire static site will be rebuilt. Otherwise, files will only be updated if the checksum has changed. <p>Do this if your theme has changed.',
+                        'default'   => false,
+                    ),	
+                    array(
                         'id'        => 'rescan_blog',
                         'type'      => 'switch',
                         'title'     => 'Rescan blog',
-                        'subtitle'  => 'To rescan the entire blog, turn this on and hit "Save Changes"',
+                        'desc'      => 'To rescan the entire blog, turn this on and hit "Save Changes"',
                         'default'   => false,
                     ),			
 			)

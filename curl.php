@@ -50,9 +50,7 @@ class Curl
 
     public function get($url_mixed, $data = array())
     {
-		
-		echo __FILE__ . ':' . __LINE__;
-        if (is_array($url_mixed)) {
+		  if (is_array($url_mixed)) {
             $curl_multi = curl_multi_init();
             $this->multi_parent = true;
 
