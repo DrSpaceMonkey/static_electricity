@@ -52,18 +52,39 @@ class WebInterface {
 		}
 	}
 
-	public static function filter_tag_URLs_by_host($haystack, $host) {
+	public static function filter_tag_URLs_for_local_host($haystack) {		
+		global $static_electricity_settings;
+		$host_domains = array();
+		$hosts = $static_electricity_settings['multi_local_host_aliases'];		
+		$host_domains[] = parse_url(home_url())['host'];
+		$should_domains_be_replaced_in_links =  $static_electricity_settings['replace_uri_in_links'];
+		$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
+		
+		foreach($hosts as $hu) {
+			$host_domains[] = parse_url($hu)['host'];
+		}
+		
+		$hosts[] = home_url();
 		$retval = array();
-		$localUrlParts = parse_url($host);
 		foreach ($haystack as $element) {
-			$fixedUri = WebInterface::relative_to_absolute_uri($element, $host . '/');
-	               	$fixedUriParts = parse_url($fixedUri);
-			if (strcasecmp($fixedUriParts['host'],$localUrlParts['host']) == 0) {
+			$fixedUri = WebInterface::relative_to_absolute_uri($element, trailingslashit(home_url()));
+	          $fixedUriParts = parse_url($fixedUri);
+			if (array_search($fixedUriParts['host'], $host_domains) !== false){
+				
+				if ($should_domains_be_replaced_in_links) {
+					foreach($hosts as $h){
+						$fixedUri = str_ireplace($h,$replacement_domain,$fixedUri);
+					}
+				}
 				array_push($retval, $fixedUri);
-		    }
+			}
+			
+				
+		    
 		}
 		return $retval;
 	}
+	
 	
 	public function get_content(){
 		return $this->curl->response;	
@@ -73,45 +94,66 @@ class WebInterface {
 		return $this->xmlDOM->html();		
 	}
 	
+	
+	
 ///TODO: DRY this part
 	
 	public function get_local_linked_resources() {
 		global $static_electricity_settings;
 		$retval = array();
-		$local = home_url();		
+		$local = home_url();
 		$localUrlParts = parse_url($local);
 
 		
 		if ($static_electricity_settings['scanning_options']['ahref'] == '1') {	
 			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "a", "href");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));	
 		}
 	
 		if ($static_electricity_settings['scanning_options']['img'] == '1') {	
 			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "img", "src");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));	
 		}
 	
 		if ($static_electricity_settings['scanning_options']['css'] == '1') {	
 			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "link", "href");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));
 		}
 		
 		if ($static_electricity_settings['scanning_options']['javascript'] == '1') {	
 			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "script", "src");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
-		}					
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));
+		}
 		return array_unique($retval);
 	}
 	
 	
 	
 	private static function get_values_by_tag_attribute($xmlDOM, $tag_name, $attribute_name) {
+		global $static_electricity_settings;
 		$retval = array();
-		
-		foreach($xmlDOM($tag_name) as $tag) {
-			array_push($retval, strtok($tag->$attribute_name, "#" ));
-		}
+		$blag = $xmlDOM($tag_name);
+		foreach($blag as $tag) {
+				$value = $tag->$attribute_name;
+				$u = strtok($value, "#" );
+				$add_uploads = $static_electricity_settings['skip_index_files_in_uploads_folder'];
+				$is_an_uploaded_file = strpos(parse_url($u)['path'], '/upload/') !== FALSE;
+				$is_an_index_page = basename(parse_url($u)['path']) != $static_electricity_settings['index_page_filename'];
+				
+				$it_should_be_added = false;
+				
+				if ($add_uploads)
+					$it_should_be_added = true;
+					
+				if (!$is_an_index_page)
+					$it_should_be_added = true;
+					
+				if ($is_an_index_page && !$is_an_uploaded_file )
+					$it_should_be_added = true;
+					
+				if ($it_should_be_added)
+					array_push($retval, $u);
+				}
 		return $retval;
 	}
 	
