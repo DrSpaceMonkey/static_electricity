@@ -271,6 +271,14 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'subtitle'  => '',
 			'desc'      => 'Index files will be given this name',
 			'default'   => 'index.html',
+			),			
+			array(
+			'id'        => '404_page_file_location',
+			'type'      => 'text',
+			'title'     => '404',
+			'subtitle'  => '',
+			'desc'      => 'The directory to save & the filename for the 404 file',
+			'default'   => '/404.html',
 			),					
 			array(
 			'id'        => 'static_electricity_working_directory',
@@ -470,7 +478,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'page_icon' => 'icon-themes',
 			'page_permissions' => 'manage_options',
 			'save_defaults' => true,
-			'show_import_export' => false,
+			'show_import_export' => true,
 			'transient_time' => '3600',
 			'network_sites' => true,
 			'admin_bar_icon' => 'dashicons-admin-generic'

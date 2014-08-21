@@ -13,13 +13,13 @@ class Wordpress_Interface {
 
 
 	function get_index_uris($retval = array()) {
-	
+		
 		for ($i = 1; $i <= $this->total_pages(); $i++)	{
 			$u = get_pagenum_link($i);
 			$u  = str_replace('rescan_blog_action=1', '', $u);
 			$u = rtrim($u, "?");
 			array_push($retval, $u );
-		}		
+		}
 		return $retval;
 	}
 	

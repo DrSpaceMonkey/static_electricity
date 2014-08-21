@@ -79,63 +79,110 @@ class StaticWordpress {
 		$retval = array();
 		global $static_electricity_settings;
 		global $reduxConfig;	
-		$wpi = new Wordpress_Interface();
 		
-		if ($static_electricity_settings['harvest_options']['index'] == '1') {			
-			$this->echo_flush('Getting index pages');
-			$retval = $wpi->get_index_uris($retval);			
-			$this->echo_flush('Found ' . count($retval) . ' URIs');
+		$scan_args = array (
+			array(
+				'option_name' => 'index',
+				'function' => 'get_index_uris',
+				'type' => 'index'
+			),
+			/*array(
+				'option_name' => 'tags',
+				'function' => 'get_tag_uris',
+				'type' => 'tag'
+			),
+			array(
+				'option_name' => 'pages',
+				'function' => 'get_page_uris',
+				'type' => 'page'
+			),
+			array(
+				'option_name' => 'posts',
+				'function' => 'get_post_uris',
+				'type' => 'post'
+			),
+			array(
+				'option_name' => 'attachments',
+				'function' => 'get_attachment_uris',
+				'type' => 'attachment'
+			),*/
+		);
+		foreach($scan_args as $arg) {		
+			$uris = $this->scan_page_type($arg['option_name'], $arg['function'], array());
+			$retval = array_merge($retval, $uris);
+			$type = $arg['type'];
+			$count = count($uris);
 		}
-				
-		
-		if ($static_electricity_settings['harvest_options']['tags'] == '1'){	
-			$this->echo_flush('Getting tag URIs');
-			$retval = $wpi->get_tag_uris($retval);
-			$this->echo_flush('Found ' . count($retval) . ' URIs');		
-		}
-				
-		if ($static_electricity_settings['harvest_options']['pages'] == '1') {		
-			$this->echo_flush('Getting page URIs');
-			$retval = $wpi->get_page_uris($retval);
-			$this->echo_flush('Found ' . count($retval) . ' URIs');
-		}
-			
-		if ($static_electricity_settings['harvest_options']['posts'] == '1') {	
-			$this->echo_flush('Getting post URIs');
-			$retval = $wpi->get_post_uris($retval);
-			$this->echo_flush('Found ' . count($retval) . ' URIs');
-		}
-		
-		if ($static_electricity_settings['harvest_options']['attachments'] == '1')	 {	
-			$this->echo_flush('Getting attachment URIs');
-			$retval = $wpi->get_attachment_uris($retval);
-			$this->echo_flush('Found ' . count($retval) . ' URIs');
-		}
-		
 		return $retval;
+	}
+	
+	function scan_page_type($option_name, $function, $uris) {
+		global $static_electricity_settings;
+		$wpi = new Wordpress_Interface();
+		if ($static_electricity_settings['harvest_options'][$option_name] == '1')	 {	
+			$uris = call_user_func(array($wpi, $function), $uris);
+		} else {
+		}
+		return $uris;
 	}
 	
 	
 	function process_uris($uris) {
-		$dbi = new DatabaseInterface();
-		foreach($uris as $u) {
-			try {
-				$this->echo_flush("Fetching $u ...");
-				$web_interface = new WebInterface($u);
-				$md5_result = md5($web_interface->get_content());
-				if ($dbi->uri_is_stale($u, $md5_result)) {
-					$filename = $this->get_file_name_from_uri($u);
-					$directory = $this->get_directory_name_from_uri($u);					
-					$this->echo_flush("$directory$filename");
-				}
-				
-			} catch (Exception $e){
-				$this->echo_flush('Error loading ' . $u);
-			}			
+		$processed_uris = array();
+		$harvested_uris = array();
+		foreach($uris as $u => &$values) {		
+			//If $values is empty, then $u needs to be fetched and possibly processed
+			if (empty($values)) {
+				$processed_uri = $this->process_uri($u);
+				$harvested_uris = array_unique(array_merge($harvested_uris, $processed_uri['harvested_uris']));
+				var_dump($harvested_uris);
+				$values = $processed_uri['values'];
+			}
 		}
+		return array_unique(array_merge($uris, $this->process_uris(array_fill_keys($harvested_uris, 0))));
 		
 	}
 	
+	function process_uri($u) {
+		$dbi = new DatabaseInterface();
+		$retval = array();
+		$retval['harvested_uris'] = array();
+		
+		try {					
+			$this->echo_flush("Fetching $u ...");				
+			$web_interface = new WebInterface($u);
+			$md5_result = md5($web_interface->get_content());
+			$stale = $dbi->uri_is_stale($u, $md5_result);
+			if ($stale) {
+				$filename = $this->get_file_name_from_uri($u);
+				$directory = $this->get_directory_name_from_uri($u);
+				if ($web_interface->is_html() && !$web_interface->is_404() ){
+					$written = $this->save_to_working_directory($web_interface->get_HTML_content(), $directory . $filename);
+					
+					$retval['harvested_uris'] = $web_interface->get_local_linked_resources();
+				} else {					
+					$written = $this->save_to_working_directory($web_interface->get_content(), $directory . $filename);
+				}
+				$this->echo_flush($written);
+				$dbi->save_uri_checksum($u, $md5_result);
+			} else {
+				
+			}
+			
+			$retval['values'] = array(
+				"checksum" => $md5_result,
+				"working_file" => $written,
+				"is_404" => $web_interface->is_404(),
+				"stale" => $stale);
+				
+		} catch (Exception $e){
+			return false;
+		}
+		return $retval;
+	}
+	
+	
+	//strlen
 	function get_file_name_from_uri($path) {
 		global $static_electricity_settings;		
 		$uri_parts = parse_url($path);
@@ -153,13 +200,38 @@ class StaticWordpress {
 		if (strpos($basename,'.') !== false) {			
 			return trailingslashit(dirname($basename));
 		} else {
-			return ltrim(trailingslashit($uri_parts['path']), '/');
+			return trailingslashit($uri_parts['path']);
 		}
-	
 	}
 	
-	function save_to_working_directory($path_name, $file_name) {
+	function save_to_working_directory($content, $filename) {	
 		
+		global $static_electricity_settings;		
+		$filename = ltrim($filename, '/');	
+		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
+		$output_file = $working_dir . $filename;
+		$output_dir = dirname($output_file);
+		if (!(file_exists($output_dir) && is_dir($output_dir)))
+			mkdir($output_dir, 0755, true);
+		
+		$bytes_written = 0;		
+		$file = fopen($output_file, 'w');
+		$bytes_written = $this->fwrite_stream($file, $content);		
+		if ($bytes_written === false)
+			return false;			
+		fclose($file);
+		return $output_file;
+		
+	}
+	
+	function fwrite_stream($fp, $string) {
+	    for ($written = 0; $written < strlen($string); $written += $fwrite) {
+		   $fwrite = fwrite($fp, substr($string, $written));
+		   if ($fwrite === false) {
+			  return $written;
+		   }
+	    }
+	    return $written;
 	}
 	
 	
@@ -177,7 +249,7 @@ class StaticWordpress {
 		$this->echo_flush('Removing any duplicate URIs');		
 		$uris = array_unique($uris);						
 		$this->echo_flush('Found ' . count($uris) . ' URIs');
-		$this->process_uris($uris);
+		var_dump($this->process_uris(array_fill_keys($uris, 0)));
 		
 		echo '</pre>';
 		exit;
@@ -280,6 +352,7 @@ class StaticWordpress {
     tgmpa( $plugins, $config );
 
 }
+
 
 
 

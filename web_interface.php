@@ -8,9 +8,12 @@ class WebInterface {
 	private $curl = NULL;
 	
 	
+	
 	function __construct($uri) {	
 	
 		require_once dirname(__FILE__) . '/curl.php';
+		require_once dirname(__FILE__) . '/ganon.php';
+		
 		$this->uri = $uri;
 		$this->curl = new Curl();
 		
@@ -23,12 +26,16 @@ class WebInterface {
 		if ($this->curl->error) {
 			throw new Exception('Failed to fetch URI.');
 		}
-		
-
 		$this->xmlDOM = WebInterface::get_xml_DOM($this->curl->response);
-		if ($this->xmlDOM === false) {
-			throw new Exception('Failed to parse DOM.');
-			}			
+	}
+	
+	public function is_html(){
+		return ($this->xmlDOM !== false);
+	}
+	
+	public function is_404() {
+		#return ($this->curl->error_code == 404);
+		return ($this->curl->error);
 	}
 	
 	public function get_xml() {
@@ -58,43 +65,58 @@ class WebInterface {
 		return $retval;
 	}
 	
-	public function get_content() {
-		return $this->curl->response;		
+	public function get_content(){
+		return $this->curl->response;	
 	}
-		
+	
+	public function get_HTML_content() {
+		return $this->xmlDOM->html();		
+	}
+	
+///TODO: DRY this part
+	
 	public function get_local_linked_resources() {
+		global $static_electricity_settings;
 		$retval = array();
 		$local = home_url();		
 		$localUrlParts = parse_url($local);
 
-		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "a", "href");
-		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+		
+		if ($static_electricity_settings['scanning_options']['ahref'] == '1') {	
+			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "a", "href");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+		}
 	
-		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "img", "src");
-		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+		if ($static_electricity_settings['scanning_options']['img'] == '1') {	
+			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "img", "src");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));	
+		}
 	
-		$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "link", "href");
-		$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
-					
-		return $retval;
+		if ($static_electricity_settings['scanning_options']['css'] == '1') {	
+			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "link", "href");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
+		}
+		
+		if ($static_electricity_settings['scanning_options']['javascript'] == '1') {	
+			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "script", "src");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_by_host($haystack, $local));
+		}					
+		return array_unique($retval);
 	}
+	
+	
 	
 	private static function get_values_by_tag_attribute($xmlDOM, $tag_name, $attribute_name) {
 		$retval = array();
 		
-		foreach($xmlDOM->getElementsByTagName($tag_name) as $tag) {
-			array_push($retval, $tag->getAttribute($attribute_name));
+		foreach($xmlDOM($tag_name) as $tag) {
+			array_push($retval, strtok($tag->$attribute_name, "#" ));
 		}
 		return $retval;
 	}
 	
 	public static function get_xml_DOM($content) {
-		$retval = new DOMDocument();
-		$result = @$retval->loadHTML($content);
-		
-		if ($result === false)
-			return false;
-		
+		$retval = str_get_dom($content);
 		return $retval;
 	}
 	

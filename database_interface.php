@@ -17,21 +17,17 @@ class DatabaseInterface {
 		$this->page_checksum_table_name = $prefix . "static_electricity_page_checksums"; 
 	}
 	
-	public function save_uri_checksum($uri, $checksum) {			
+	public function save_uri_checksum($uri, $checksum) {	
 		global $wpdb;
-			if (uri_is_stale($uri, $checksum)) {
-				$wpdb->update(
+			if ($this->uri_is_stale($uri, $checksum)) {
+				$wpdb->replace(
 					$this->page_checksum_table_name, 
 					array( 
 						'uri' => $uri,
-						'checksum' => 'value2'
-					),
-					array(
-						'%s',
-						'%s'
-						)
+						'checksum' => $checksum
+					)
 				);
-			};
+			}
 	
 	}
 	

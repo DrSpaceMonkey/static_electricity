@@ -66,10 +66,12 @@ namespace FileInterface;
 			    'type'     => 'select',
 			    'title'    => 'Storage method', 
 			    'subtitle' => '',
-			    'desc'     => '',
+			    'desc'     => 'Settings for this storage engine can be set from the menu on the left',
 			    // Must provide key => value pairs for select options
 			    'options'  => $this->options_array,
+			    'select2' 	=> 'allowClear: false',
 			    'default'  => get_class($this->default_selection),
+			    'validate' => 'not_empty'
 			);			
 			return $fields;
 		}
