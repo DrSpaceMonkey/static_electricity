@@ -246,6 +246,21 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'icon'      => 'el-icon-cogs',
 			'title'     => 'Settings',
 			'fields'    => array(
+
+                    array(
+                        'id'        => 'clear_checksum',
+                        'type'      => 'switch',
+                        'title'     => 'Rebuild entire blog',
+                        'desc'      => 'If you set this value, the entire static site will be rebuilt. Otherwise, files will only be updated if the checksum has changed. <p>Do this if your theme has changed.',
+                        'default'   => false,
+                    ),	
+                    array(
+                        'id'        => 'rescan_blog',
+                        'type'      => 'switch',
+                        'title'     => 'Rescan blog',
+                        'desc'      => 'To rescan the entire blog, turn this on and hit "Save Changes"',
+                        'default'   => false,
+                    ),		
 			array(
 			'id'        => 'replace_uri_in_links',
 			'type'      => 'switch',
@@ -307,7 +322,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'title'     => 'Working directory',
 			'subtitle'  => "Directory where the static files will be built",
 			'desc'      => 'Please use absolute paths, and not relative paths',
-			'default'   => trailingslashit(sys_get_temp_dir()) . 'static_electricity/',
+			'default'   => trailingslashit(dirname(dirname(__FILE__))) . 'working_path/',
 			),			
 			$static_file_interface->get_file_engine_selector(),
 			array(
@@ -359,6 +374,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'id' => 'when_to_harvest',
 			'title' => 'Trigger rescan on...',
 			'subtitle' => 'Pages will be regenerated on the selected actions',
+			'required'  => array(1, '=', 0),
 			'type' => 'checkbox',
 			'default' => array(
 			'trashed_post' => '1', 
@@ -384,22 +400,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'edit_category' => 'Category is edited',
 			'after_switch_theme' => 'Theme is changed',
 			)
-			),
-
-                    array(
-                        'id'        => 'clear_checksum',
-                        'type'      => 'switch',
-                        'title'     => 'Rebuild entire blog',
-                        'desc'      => 'If you set this value, the entire static site will be rebuilt. Otherwise, files will only be updated if the checksum has changed. <p>Do this if your theme has changed.',
-                        'default'   => false,
-                    ),	
-                    array(
-                        'id'        => 'rescan_blog',
-                        'type'      => 'switch',
-                        'title'     => 'Rescan blog',
-                        'desc'      => 'To rescan the entire blog, turn this on and hit "Save Changes"',
-                        'default'   => false,
-                    ),			
+			),	
 			)
 			);
 			
@@ -450,11 +451,11 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			'opt_name' => 'static_electricity_settings',
 			'global_variable' => 'static_electricity_settings',			
 			'display_name' => 'Static Electricity',
-               'intro_text' => '<div id="siteloader"></div>​',
+               //'intro_text' => '<div id="static_electricity_sideloader" style="min-width:100%;"></div>​',
+               //'intro_text' => '<a href="/?rescan_blog_action=1">Rescan entire blog</a>​',
 			'page_slug' => 'static_electricity_options',
 			'page_title' => 'Static Electricity',
 			'update_notice' => true,
-			'intro_text' => '',
 			'footer_text' => '',
 			'admin_bar' => true,
 			'menu_type' => 'menu',

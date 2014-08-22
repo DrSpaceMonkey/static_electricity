@@ -10,6 +10,7 @@ namespace FileInterface;
 		abstract public function delete_directory($target);
 		abstract public function get_redux_options();
 		abstract public function get_display_name();
+		abstract public function clone_directory_to_destination($directory);
 	}
 	
 	class FileInterface {
@@ -18,8 +19,10 @@ namespace FileInterface;
 		private $interface_classes = array();
 		private $default_selection = NULL;
 		private $options_array = array();
+		private $the_chosen_one;
 		
 		public function __construct(){	
+			
 			$directory = __DIR__;		
 			require_once trailingslashit($directory) . 'NameSpaceFinder.php';
 			$scanned_directory = array_diff(scandir($directory), array('..', '.'));
@@ -62,7 +65,7 @@ namespace FileInterface;
 		
 		public function get_file_engine_selector(){			
 			$fields = array(
-			    'id'       => 'static-wordpress-file-interface-select',
+			    'id'       => 'static_electricity_file_interface_select',
 			    'type'     => 'select',
 			    'title'    => 'Storage method', 
 			    'subtitle' => '',
@@ -76,9 +79,17 @@ namespace FileInterface;
 			return $fields;
 		}
 		
-		public function the_chosen_one(){
+		public function the_chosen_one() {
+			if (!isset($this->the_chosen_one)) {
+				
+				global $static_electricity_settings;
+				$chosen_class_name = $static_electricity_settings['static_electricity_file_interface_select'];
+				$this->the_chosen_one = new $chosen_class_name(); 
+			}
 			
+			return $this->the_chosen_one;
 		}
+		
 		
 		
 		static function endsWith($haystack, $needle)

@@ -24,6 +24,30 @@ namespace FileInterface {
 		}
 		
 		
+		public function clone_directory_to_destination($directory) {		
+			global $static_electricity_settings;
+			$destination_directory = $static_electricity_settings['local-file-target-directory'];
+			$this->recurse_copy($directory, $destination_directory);
+			
+		}
+		
+		private function recurse_copy($src,$dst) { 
+		    $dir = opendir($src); 
+		    @mkdir($dst); 
+		    while(false !== ( $file = readdir($dir)) ) { 
+			   if (( $file != '.' ) && ( $file != '..' )) { 
+				  if ( is_dir($src . '/' . $file) ) { 
+					 $this->recurse_copy($src . '/' . $file,$dst . '/' . $file); 
+				  } 
+				  else { 
+					 copy($src . '/' . $file,$dst . '/' . $file); 
+				  } 
+			   } 
+		    } 
+		    closedir($dir); 
+		} 
+
+		
 		public function copy_file($source, $destination) {	
 			if (!directory_exists(dir_name($source)))
 				mkdir($destination, 0755, true);

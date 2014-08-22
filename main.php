@@ -45,10 +45,10 @@ class StaticWordpress {
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
 		require_once dirname(__FILE__) . '/admin/admin-init.php';
 		require_once dirname(__FILE__) . '/http_build_url.php';
-          require_once dirname(__FILE__) . '/FileInterface/base_file_interface.php';
 		require_once dirname(__FILE__) . '/web_interface.php';
 		require_once dirname(__FILE__) . '/wordpress_interface.php';
           require_once dirname(__FILE__) . '/database_interface.php';
+          require_once dirname(__FILE__) . '/FileInterface/base_file_interface.php';
 	}
 
 	
@@ -74,6 +74,10 @@ class StaticWordpress {
 		echo '<p>' . $message . '</p>';
 		flush();
 		ob_flush();
+	}
+	
+	function write_to_message_log(){
+		
 	}
 	
 	function scan_pages() {		
@@ -127,30 +131,44 @@ class StaticWordpress {
 		return $uris;
 	}
 	
+	function save_404(){	
+		global $static_electricity_settings;		
+		$filename = $static_electricity_settings['404_page_file_location'];
+		$u = get_home_url() . "/404.this.should.never.work";
+		
+		var_dump($u);
+		
+		$web_interface = new WebInterface($u);
+		$this->save_to_working_directory($web_interface->replace_uris_in_content(), $filename);
+	}
 	
-	function process_uris($uris) {
+	
+	function process_uris($uris, $uris_to_skip) {
 		ini_set('memory_limit', '-1');
 		$processed_uris = array();
 		$harvested_uris = array();
+		
+		$this->save_404();
+		
+		 
 		foreach($uris as $u => &$values) {		
 			//If $values is empty, then $u needs to be fetched and possibly processed
-			if (empty($values)) {
-				$processed_uri = $this->process_uri($u);
+			if (empty($values) && (array_search($u, $uris_to_skip) === FALSE)) {
+				$processed_uri = $this->process_uri($u);				
+				$uris_to_skip[] = $u;
 				foreach($processed_uri['harvested_uris'] as $h_u) {
-					if (!isset($uris[$h_u]))
+					if ((!isset($uris[$h_u])) && (array_search($h_u, $harvested_uris) === FALSE))
 						$harvested_uris[] = $h_u;
 				}
 				$harvested_uris = array_unique($harvested_uris);
 				$uris[$u] = $processed_uri['values'];
 			}
 		}
-				var_dump(count($uris));
 		
-		var_dump("harvested_uris:");
-		var_dump($harvested_uris);
+		$this->echo_flush("Found " . count($harvested_uris) . " URIs in harvested HTML pages. Fetching...");
 		if (count($harvested_uris) > 0)
 		{
-			return array_merge($uris, $this->process_uris(array_fill_keys($harvested_uris, 0)));
+			return array_merge($uris, $this->process_uris(array_fill_keys(array_unique($harvested_uris), 0), $uris_to_skip));
 		} else {
 			return $uris;
 		}
@@ -172,15 +190,18 @@ class StaticWordpress {
 			$md5_result = md5($web_interface->get_content());
 			$stale = $dbi->uri_is_stale($u, $md5_result);
 			if ($stale) {				
+				$dbi->save_uri_checksum($u, $md5_result);
 				$this->echo_flush("Processing $path ...");	
 				if ($web_interface->is_html() && !$web_interface->is_404() ){
-					$bytes_written = $this->save_to_working_directory($web_interface->get_HTML_content(), $path);
+				
+					$bytes_written = $this->save_to_working_directory($web_interface->replace_uris_in_content(), $path);
+					
+					
 					$retval['harvested_uris'] = $web_interface->get_local_linked_resources();
 				} else {
 					$bytes_written = $this->save_to_working_directory($web_interface->get_content(), $path);
 					
 				}
-				$dbi->save_uri_checksum($u, $md5_result);
 			} else {
 				$this->echo_flush("File is up to date ($path)");	
 				$bytes_written = strlen($web_interface->get_content());
@@ -267,7 +288,7 @@ class StaticWordpress {
 		global $static_electricity_settings;
 		global $reduxConfig;
 		
-		echo '<pre>';
+		echo '<pre id="#inner_html_sideload_object">';
 	
 		echo '<p>Scanning blog</p>';
 		// $static_electricity_settings['rescan_blog']
@@ -275,21 +296,55 @@ class StaticWordpress {
 		$this->echo_flush('Removing any duplicate URIs');		
 		$uris = array_unique($uris);						
 		$this->echo_flush('Found ' . count($uris) . ' URIs');
-		var_dump($this->process_uris(array_fill_keys($uris, 0)));
+		$results = ($this->process_uris(array_fill_keys($uris, 0), array()));
+		
+		
+		
+		$this->echo_flush('Processed a total of ' . count($results) . ' URIs');
+		$this->echo_flush('Moving files to final destination...');
+		$this->relocate_working_files();
+		
+		
 		
 		echo '</pre>';
 		exit;
 		
 	}
 	
+	function relocate_working_files() {
+		global $static_electricity_settings;		
+		$filename = ltrim($path, '/');	
+		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
+		
+		$file = new FileInterface\FileInterface();
+		$file->the_chosen_one()->clone_directory_to_destination($working_dir);
+		
+	}
+	
 	function footer_inject(){
+		global $static_electricity_settings;
+		global $reduxConfig;
+		
 		if ($static_electricity_settings['rescan_blog']) {
-		?>
-		    <script>
-			 $("#siteloader").html('<object data="<?php echo host_url() ?>/?rescan_blog_action=1">');
-		    </script>
-		<?php
-		}	
+		
+			$reduxConfig->ReduxFramework->set('rescan_blog', false);
+			?> 
+			<script>
+				window.open('<?php echo get_home_url() ?>/?rescan_blog_action=1', '_blank');
+			</script>
+			
+			<?php
+			
+		
+			//wp_register_script( 'static-electricity-sideload', plugins_url( 'sideload.js' , __FILE__ ), array('jquery'));
+			
+			//wp_localize_script( 'static-electricity-sideload', 'staticElectricity', array( 'ajaxurl' => admin_url( 'admin-ajax.php' )));
+			
+			//wp_enqueue_script( 'static-electricity-sideload');
+			
+			//add_action("wp_ajax_nopriv_rescan_entire_blog", "rescan_entire_blog");
+			#add_action("wp_ajax_rescan_entire_blog", "rescan_entire_blog");
+		}
 	}
 	
     function admin_menu()
@@ -397,6 +452,7 @@ class StaticWordpress {
 }
 
 $wpStaticWordpress = new StaticWordpress();
+wp_register_script( "static_electricity_javascript", WP_PLUGIN_URL.'/static_electricity/sideload.js', array('jquery') );
 #add_action('plugins_loaded', array($wpStaticWordpress, 'admin_init'));  
 add_action('wp_loaded', array($wpStaticWordpress, 'admin_menu'));
-add_action('wp_footer', array($wpStaticWordpress, 'footer_inject'));
+add_action('wp_after_admin_bar_render', array($wpStaticWordpress, 'footer_inject'), 100);

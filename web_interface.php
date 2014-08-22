@@ -22,10 +22,10 @@ class WebInterface {
 		
 		$this->curl->get($uri);
 		
-		
+		/*
 		if ($this->curl->error) {
 			throw new Exception('Failed to fetch URI.');
-		}
+		}*/
 		$this->xmlDOM = WebInterface::get_xml_DOM($this->curl->response);
 	}
 	
@@ -84,7 +84,24 @@ class WebInterface {
 		}
 		return $retval;
 	}
-	
+		
+	public function replace_uris_in_content() {			
+		global $static_electricity_settings;
+		
+		$html_content = $this->get_HTML_content();
+		$should_domains_be_replaced_in_links =  $static_electricity_settings['replace_uri_in_links'];
+		
+		if ($should_domains_be_replaced_in_links) {
+			$host_domains = $static_electricity_settings['multi_local_host_aliases'];		
+			$host_domains[] = home_url();
+			$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
+			
+			foreach($host_domains as $hu) {
+				$html_content = str_ireplace($hu, $replacement_domain, $html_content);
+			}
+		}
+		return $html_content;
+	}
 	
 	public function get_content(){
 		return $this->curl->response;	
@@ -126,6 +143,7 @@ class WebInterface {
 		}
 		return array_unique($retval);
 	}
+
 	
 	
 	
