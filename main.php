@@ -136,8 +136,6 @@ class StaticWordpress {
 		$filename = $static_electricity_settings['404_page_file_location'];
 		$u = get_home_url() . "/404.this.should.never.work";
 		
-		var_dump($u);
-		
 		$web_interface = new WebInterface($u);
 		$this->save_to_working_directory($web_interface->replace_uris_in_content(), $filename);
 	}
