@@ -161,7 +161,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			$sample_patterns_path   = ReduxFramework::$_dir . '../sample/patterns/';
 			$sample_patterns_url    = ReduxFramework::$_url . '../sample/patterns/';
 			$sample_patterns        = array();
-			$home_url               = home_url();
+			$home_url               = get_home_url();
 
 			if (is_dir($sample_patterns_path)) :
 
@@ -249,6 +249,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 
                     array(
                         'id'        => 'clear_checksum',
+					'required'  => array(1, '=', 2),
                         'type'      => 'switch',
                         'title'     => 'Rebuild entire blog',
                         'desc'      => 'If you set this value, the entire static site will be rebuilt. Otherwise, files will only be updated if the checksum has changed. <p>Do this if your theme has changed.',

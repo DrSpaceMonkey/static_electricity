@@ -15,8 +15,10 @@ class StaticWordpress {
 	private $wpsf;
 	private $plugin_name = 'Static Electricity';
 	private $slug = "static_electricity";
-	private $rescan_entire_blog = false;
-	
+	protected $rescan_entire_blog = false;
+	protected $clear_checksums = false;
+	protected $rescan_blog = false;
+	protected $rescan_blog_action_trigger = null;
 	
 	private $settings = array(
 		'replace_uris' => NULL,
@@ -43,37 +45,36 @@ class StaticWordpress {
 	public function __construct() {		
 		global $wpdb;
 		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
+		require_once dirname(__FILE__) . '/class-tgm-plugin-activation.php';
 		require_once dirname(__FILE__) . '/admin/admin-init.php';
 		require_once dirname(__FILE__) . '/http_build_url.php';
 		require_once dirname(__FILE__) . '/web_interface.php';
 		require_once dirname(__FILE__) . '/wordpress_interface.php';
           require_once dirname(__FILE__) . '/database_interface.php';
           require_once dirname(__FILE__) . '/FileInterface/base_file_interface.php';
+		$this->retrieve_settings();
 	}
 
 	
 	function retrieve_settings() {
-	/*
-		$this->DOM_tags_to_scan['ahref'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'ahref' );
-		$this->DOM_tags_to_scan['img'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'img' );
-		$this->DOM_tags_to_scan['css'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'css' );
-		$this->DOM_tags_to_scan['javascript'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'javascript');
-		
-		$this->wp_objects_to_scan['index'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'index' );
-		$this->wp_objects_to_scan['tags'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'tags' );
-		$this->wp_objects_to_scan['pages'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'pages' );
-		$this->wp_objects_to_scan['posts'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'posts' );
-		$this->wp_objects_to_scan['attachments'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'attachments' );
-		
-		$this->settings['replace_uris'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replace_uri_in_links' );
-		$this->settings['new_uri_prefix'] = wpsf_get_setting( $this->option_group, 'basic_settings', 'replacement_uri_prefix' );*/
-
+		global $static_electricity_settings;
+		$this->clear_checksums = $static_electricity_settings['clear_checksum'];
+		$this->rescan_blog_action_trigger = isset($_GET["rescan_blog_action"]) ? $_GET["rescan_blog_action"] : false;
+		$this->rescan_blog = $static_electricity_settings['rescan_blog'];
 	}
 	
 	function echo_flush($message){
-		echo '<p>' . $message . '</p>';
-		flush();
-		ob_flush();
+	
+		global $running_wp_cli;
+		
+		if ($running_wp_cli) {
+			WP_CLI::success($message);
+		} else {		
+			echo '<p>' . $message . '</p>';
+			flush();
+			ob_flush();
+		}
+		
 	}
 	
 	function write_to_message_log(){
@@ -134,8 +135,7 @@ class StaticWordpress {
 	function save_404(){	
 		global $static_electricity_settings;		
 		$filename = $static_electricity_settings['404_page_file_location'];
-		$u = get_home_url() . "/404.this.should.never.work";
-		
+		$u = get_home_url() . "/404.this.should.never.work";		
 		$web_interface = new WebInterface($u);
 		$this->save_to_working_directory($web_interface->replace_uris_in_content(), $filename);
 	}
@@ -151,15 +151,17 @@ class StaticWordpress {
 		 
 		foreach($uris as $u => &$values) {		
 			//If $values is empty, then $u needs to be fetched and possibly processed
-			if (empty($values) && (array_search($u, $uris_to_skip) === FALSE)) {
-				$processed_uri = $this->process_uri($u);				
-				$uris_to_skip[] = $u;
-				foreach($processed_uri['harvested_uris'] as $h_u) {
-					if ((!isset($uris[$h_u])) && (array_search($h_u, $harvested_uris) === FALSE))
-						$harvested_uris[] = $h_u;
+			if (empty($values) && (array_search(parse_url($u)['path'], $uris_to_skip) === FALSE)) {
+				$processed_uri = $this->process_uri($u);
+				if ($processed_uri !== false) {
+					$uris_to_skip[] = parse_url($u)['path'];
+					foreach($processed_uri['harvested_uris'] as $h_u) {
+						if ((!isset($uris[$h_u])) && (array_search($h_u, $harvested_uris) === FALSE))
+							$harvested_uris[] = $h_u;
+					}
+					$harvested_uris = array_unique($harvested_uris);
+					$uris[$u] = $processed_uri['values'];
 				}
-				$harvested_uris = array_unique($harvested_uris);
-				$uris[$u] = $processed_uri['values'];
 			}
 		}
 		
@@ -182,12 +184,16 @@ class StaticWordpress {
 		$bytes_written = 0;
 		$retval['harvested_uris'] = array();
 		
+		if (!WebInterface::is_a_local_uri($u))
+			return false;
+		
+		
 		try {					
 			$this->echo_flush("Fetching $u ...");				
 			$web_interface = new WebInterface($u);
 			$md5_result = md5($web_interface->get_content());
 			$stale = $dbi->uri_is_stale($u, $md5_result);
-			if ($stale) {				
+			if ($stale or $this->clear_checksums) {				
 				$dbi->save_uri_checksum($u, $md5_result);
 				$this->echo_flush("Processing $path ...");	
 				if ($web_interface->is_html() && !$web_interface->is_404() ){
@@ -223,7 +229,7 @@ class StaticWordpress {
 		return $retval;
 	}
 	
-	function get_working_path($path) {
+	function get_working_path($path = "") {
 		global $static_electricity_settings;		
 		$filename = ltrim($path, '/');	
 		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
@@ -237,6 +243,9 @@ class StaticWordpress {
 		$uri_parts = parse_url($path);
 		$basename = basename($uri_parts['path']);
 		if (strpos($basename,'.') !== false) {
+			$ext = pathinfo($filename, PATHINFO_EXTENSION);
+			if (strcasecmp($ext, "php") == 0)
+				$basename = str_ireplace($ext, "html", $basename);
 			return $basename;
 		} else {
 			return $static_electricity_settings['index_page_filename'];
@@ -253,19 +262,30 @@ class StaticWordpress {
 		}
 	}
 	
-	function save_to_working_directory($content, $filename) {	
-		$output_file = $this->get_working_path($filename);
-		$output_dir = dirname($output_file);
-		if (!(file_exists($output_dir) && is_dir($output_dir)))
-			mkdir($output_dir, 0755, true);
-		
-		$bytes_written = 0;		
-		$file = fopen($output_file, 'w');
-		$bytes_written = $this->fwrite_stream($file, $content);	
-		fclose($file);	
-		if ($bytes_written === false)
-			return false;			
-		return $bytes_written;
+	function save_to_working_directory($content, $filename) {
+	
+		try {
+			if (file_exists($filename) or strlen($content) == 0)
+				return false;
+				
+			$output_file = $this->get_working_path($filename);
+			$output_dir = dirname($output_file);
+			if (!(file_exists($output_dir) && is_dir($output_dir)))
+				mkdir($output_dir, 0755, true);
+			
+			$bytes_written = 0;		
+			$file = fopen($output_file, 'w');
+			$bytes_written = $this->fwrite_stream($file, $content);	
+			fclose($file);
+			chmod($file, 0444);
+			$file = NULL;
+			if ($bytes_written === false)
+				return false;			
+			return $bytes_written;
+		} catch (Exception $e) {		
+			WP_CLI::error($e);
+			return false;
+		}
 		
 	}
 	
@@ -286,9 +306,9 @@ class StaticWordpress {
 		global $static_electricity_settings;
 		global $reduxConfig;
 		
-		echo '<pre id="#inner_html_sideload_object">';
+		$this->echo_flush('<pre id="#inner_html_sideload_object">');
 	
-		echo '<p>Scanning blog</p>';
+		$this->echo_flush('Scanning blog');
 		// $static_electricity_settings['rescan_blog']
 		$uris = $this->scan_pages();		
 		$this->echo_flush('Removing any duplicate URIs');		
@@ -300,12 +320,12 @@ class StaticWordpress {
 		
 		$this->echo_flush('Processed a total of ' . count($results) . ' URIs');
 		$this->echo_flush('Moving files to final destination...');
-		$this->relocate_working_files();
+		//$this->relocate_working_files();
 		
 		
 		
 		echo '</pre>';
-		exit;
+		die();
 		
 	}
 	
@@ -315,7 +335,7 @@ class StaticWordpress {
 		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
 		
 		$file = new FileInterface\FileInterface();
-		$file->the_chosen_one()->clone_directory_to_destination($working_dir);
+		//$file->the_chosen_one()->clone_directory_to_destination($working_dir);
 		
 	}
 	
@@ -323,7 +343,7 @@ class StaticWordpress {
 		global $static_electricity_settings;
 		global $reduxConfig;
 		
-		if ($static_electricity_settings['rescan_blog']) {
+		if ($this->rescan_blog == 1) {
 		
 			$reduxConfig->ReduxFramework->set('rescan_blog', false);
 			?> 
@@ -349,25 +369,20 @@ class StaticWordpress {
     {	   
 		global $static_electricity_settings;
 		global $reduxConfig;
+		
+		
+		if (isset($static_electricity_settings)) {
+			if ($this->clear_checksums) {
+				$db = new DatabaseInterface($wpdb);
 				
-		/*if (is_null($static_electricity_settings)){
-			throw new Exception("Settings didn't load");
-		}*/
-		
-		if ($static_electricity_settings['clear_checksum']) {
-			$db = new DatabaseInterface($wpdb);
-			$db->clear_checksums();
-			//$reduxConfig->ReduxFramework->set('clear_checksum', false);
-		}
-		
-		
-		
+				
+				FileInterface\FileInterface::deleteDir($this->get_working_path());
+				$db->clear_checksums();
+				$reduxConfig->ReduxFramework->set('clear_checksum', false);
+			}
 			
-		
-		if(isset($_GET["rescan_blog_action"])) {
-			$rescan_blog_action = ($_GET["rescan_blog_action"] == 1);
 			$reduxConfig->ReduxFramework->set('rescan_blog', false);
-			if ($rescan_blog_action) {		
+			if ($this->rescan_blog_action_trigger == 1) {		
 				$this->rescan_entire_blog();
 			}
 		}
@@ -393,13 +408,18 @@ class StaticWordpress {
      */
     $plugins = array(
 
-        // This is an example of how to include a plugin pre-packaged with a theme.
         array(
-            'name'               => 'Redux Framework', // The plugin name.
-            'slug'               => 'redux-framework', // The plugin slug (typically the folder name).
-            'required'           => true, // If false, the plugin is only 'recommended' instead of required.
-            'force_activation'   => true, // If true, plugin is activated upon theme activation and cannot be deactivated until theme switch.
-        )
+            'name'      => 'Amazon Web Services',
+            'slug'      => 'amazon-web-services',
+            'required'  => true,
+            'force_activation'  => true,
+        ),
+        array(
+            'name'      => 'Redux Framework',
+            'slug'      => 'redux-framework',
+            'required'  => true,
+            'force_activation'  => true,
+        ),
     );
 
     /**
@@ -450,7 +470,18 @@ class StaticWordpress {
 }
 
 $wpStaticWordpress = new StaticWordpress();
-wp_register_script( "static_electricity_javascript", WP_PLUGIN_URL.'/static_electricity/sideload.js', array('jquery') );
+//wp_register_script( "static_electricity_javascript", WP_PLUGIN_URL.'/static_electricity/sideload.js', array('jquery') );
 #add_action('plugins_loaded', array($wpStaticWordpress, 'admin_init'));  
-add_action('wp_loaded', array($wpStaticWordpress, 'admin_menu'));
+add_action('plugins_loaded', array($wpStaticWordpress, 'admin_menu'));
+add_action('tgmpa_register', array($wpStaticWordpress, 'static_electricity_required_plugins'));
 add_action('wp_after_admin_bar_render', array($wpStaticWordpress, 'footer_inject'), 100);
+
+
+//Version parameters need to be removed from script URLs
+function vc_remove_wp_ver_css_js( $src ) {
+    if ( strpos( $src, 'ver=' ) )
+        $src = remove_query_arg( 'ver', $src );
+    return $src;
+}
+add_filter( 'style_loader_src', 'vc_remove_wp_ver_css_js', 9999 );
+add_filter( 'script_loader_src', 'vc_remove_wp_ver_css_js', 9999 );

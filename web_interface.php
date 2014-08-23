@@ -56,7 +56,7 @@ class WebInterface {
 		global $static_electricity_settings;
 		$host_domains = array();
 		$hosts = $static_electricity_settings['multi_local_host_aliases'];		
-		$host_domains[] = parse_url(home_url())['host'];
+		$host_domains[] = parse_url(get_home_url())['host'];
 		$should_domains_be_replaced_in_links =  $static_electricity_settings['replace_uri_in_links'];
 		$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
 		
@@ -64,10 +64,10 @@ class WebInterface {
 			$host_domains[] = parse_url($hu)['host'];
 		}
 		
-		$hosts[] = home_url();
+		$hosts[] = get_home_url();
 		$retval = array();
 		foreach ($haystack as $element) {
-			$fixedUri = WebInterface::relative_to_absolute_uri($element, trailingslashit(home_url()));
+			$fixedUri = WebInterface::relative_to_absolute_uri($element, trailingslashit(get_home_url()));
 	          $fixedUriParts = parse_url($fixedUri);
 			if (array_search($fixedUriParts['host'], $host_domains) !== false){
 				
@@ -84,6 +84,27 @@ class WebInterface {
 		}
 		return $retval;
 	}
+	
+	public static function is_a_local_uri($u) {		
+	
+	
+		global $static_electricity_settings;
+		$host_domains = array();
+		$hosts = $static_electricity_settings['multi_local_host_aliases'];
+		$host_domains[] = parse_url(get_home_url())['host'];
+		
+		
+		if(filter_var($u, FILTER_VALIDATE_URL) === FALSE) return false;
+		
+		foreach($hosts as $hu) {
+			$host_domains[] = parse_url($hu)['host'];
+		}
+		
+	     $fixedUriParts = parse_url($u);
+		if($fixedUriParts === FALSE) return false;
+		
+		return (array_search($fixedUriParts['host'], $host_domains) !== false);
+	}
 		
 	public function replace_uris_in_content() {			
 		global $static_electricity_settings;
@@ -93,10 +114,11 @@ class WebInterface {
 		
 		if ($should_domains_be_replaced_in_links) {
 			$host_domains = $static_electricity_settings['multi_local_host_aliases'];		
-			$host_domains[] = home_url();
+			$host_domains[] = get_home_url();
 			$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
 			
 			foreach($host_domains as $hu) {
+				WP_CLI::success("Replacing $hu with $replacement_domain...");
 				$html_content = str_ireplace($hu, $replacement_domain, $html_content);
 			}
 		}
@@ -118,7 +140,7 @@ class WebInterface {
 	public function get_local_linked_resources() {
 		global $static_electricity_settings;
 		$retval = array();
-		$local = home_url();
+		$local = get_home_url();
 		$localUrlParts = parse_url($local);
 
 		

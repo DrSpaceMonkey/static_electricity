@@ -2,16 +2,17 @@
 
 namespace FileInterface {
 
-	class LocalFileInterface extends BaseFileInterface {
+	class AWSInterface extends BaseFileInterface {
 		
 		private $default_directory;
+		private $aws;
+		private $client;
 		
 		public function __construct(){
-			
-			
+		
+			$this->aws = new \Amazon_Web_Services(plugins_url('amazon-web-services'));
+			$this->client = $this->aws->get_client();
 			$this->default_directory = dirname(__DIR__) . '/static/';
-			
-			
 			if (!is_dir($this->default_directory)){
 				$this->create_directory($this->default_directory);				
 			}
@@ -67,7 +68,7 @@ namespace FileInterface {
 		
 		
 		public function get_display_name() {
-			return 'Local file';
+			return 'S3 bucket';
 		}
 		
 		public function delete_directory($target){	
@@ -78,14 +79,14 @@ namespace FileInterface {
 			$retval = array(
 			    'title'   =>  $this->get_display_name(),
 			    'icon'    => 'el-icon-cogs',
-			    'heading' => 'Local file storage settings',
+			    'heading' => 'S3 settings',
 			    'desc'    => '',
 			    'fields'  => array(		
 					array(
-					'id'        => 'local-file-target-directory',
+					'id'        => 'aws-target-bucket',
 					'type'      => 'text',
 					'title'     => 'Target directory',
-					'subtitle'  => "Directory where the static files will be moved after the static site is built",
+					'subtitle'  => "S3 Bucket to use",
 					'desc'      => 'Please use absolute paths, and not relative paths',
 					'default'   =>  $this->default_directory,
 					),		
