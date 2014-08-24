@@ -197,7 +197,11 @@ class StaticWordpress {
 			$stale = $dbi->uri_is_stale($u, $md5_result);
 			if ($stale or $this->clear_checksums) {				
 				$dbi->save_uri_checksum($u, $md5_result);
-				$this->echo_flush("Processing $path ...");	
+				$this->echo_flush("Processing $path ...");
+				
+				$is_html = $web_interface->is_html();
+				
+				
 				if ($web_interface->is_html() && !$web_interface->is_404() ){
 				
 					$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
@@ -320,7 +324,11 @@ class StaticWordpress {
 	
 		$this->echo_flush('Scanning blog');
 		// $static_electricity_settings['rescan_blog']
-		$uris = $this->scan_pages();		
+		$uris = $this->scan_pages();
+		
+		//$uris = array(get_home_url());
+		
+		
 		$this->echo_flush('Removing any duplicate URIs');		
 		$uris = array_unique($uris);						
 		$this->echo_flush('Found ' . count($uris) . ' URIs');
@@ -330,7 +338,9 @@ class StaticWordpress {
 		
 		$this->echo_flush('Processed a total of ' . count($results) . ' URIs');
 		$this->echo_flush('Moving files to final destination...');
-		//$this->relocate_working_files();
+		
+		
+		$this->relocate_working_files();
 		
 		
 		
@@ -345,7 +355,7 @@ class StaticWordpress {
 		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
 		
 		$file = new FileInterface\FileInterface();
-		//$file->the_chosen_one()->clone_directory_to_destination($working_dir);
+		$file->the_chosen_one()->clone_directory_to_destination($working_dir);
 		
 	}
 	

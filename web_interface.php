@@ -30,7 +30,8 @@ class WebInterface {
 	}
 	
 	public function is_html(){
-		return ($this->xmlDOM !== false);
+		$u = curl_getinfo($this->curl->curl, CURLINFO_CONTENT_TYPE);
+		return (strpos($u,'text/html') !== false);
 	}
 	
 	public function is_404() {
@@ -116,7 +117,6 @@ class WebInterface {
 			$host_domains[] = get_home_url();
 			
 			foreach($host_domains as $hu) {
-				WP_CLI::success("Replacing $hu with $replacement_domain...");
 				$html_content = str_ireplace($hu, $replacement_domain, $html_content);
 			}
 		}
