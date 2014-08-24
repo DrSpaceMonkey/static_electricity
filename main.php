@@ -116,6 +116,7 @@ class StaticWordpress {
 		foreach($scan_args as $arg) {		
 			$uris = $this->scan_page_type($arg['option_name'], $arg['function'], array());
 			$retval = array_merge($retval, $uris);
+			
 			$type = $arg['type'];
 			$count = count($uris);
 		}
@@ -175,7 +176,8 @@ class StaticWordpress {
 		
 	}
 	
-	function process_uri($u) {
+	function process_uri($u) {		
+		global $static_electricity_settings;
 		$dbi = new DatabaseInterface();
 		$filename = $this->get_file_name_from_uri($u);
 		$directory = $this->get_directory_name_from_uri($u);
@@ -198,10 +200,18 @@ class StaticWordpress {
 				$this->echo_flush("Processing $path ...");	
 				if ($web_interface->is_html() && !$web_interface->is_404() ){
 				
-					$bytes_written = $this->save_to_working_directory($web_interface->replace_uris_in_content(), $path);
+					$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
+					$html_content = $web_interface->get_HTML_content();
+					$fixed_content_to_save = $web_interface->replace_uris_in_content($html_content, $replacement_domain);
+				
+					$bytes_written = $this->save_to_working_directory($fixed_content_to_save, $path);
 					
 					
-					$retval['harvested_uris'] = $web_interface->get_local_linked_resources();
+					
+					$content_to_harvest = $web_interface->replace_uris_in_content($html_content, get_home_url());
+					
+					
+					$retval['harvested_uris'] = $web_interface->get_local_linked_resources($content_to_harvest, get_home_url());
 				} else {
 					$bytes_written = $this->save_to_working_directory($web_interface->get_content(), $path);
 					

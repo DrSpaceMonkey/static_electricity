@@ -52,13 +52,12 @@ class WebInterface {
 		}
 	}
 
-	public static function filter_tag_URLs_for_local_host($haystack) {		
+	public static function filter_tag_URLs_for_local_host($haystack, $replacement_domain) {		
 		global $static_electricity_settings;
 		$host_domains = array();
 		$hosts = $static_electricity_settings['multi_local_host_aliases'];		
 		$host_domains[] = parse_url(get_home_url())['host'];
 		$should_domains_be_replaced_in_links =  $static_electricity_settings['replace_uri_in_links'];
-		$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
 		
 		foreach($hosts as $hu) {
 			$host_domains[] = parse_url($hu)['host'];
@@ -106,23 +105,21 @@ class WebInterface {
 		return (array_search($fixedUriParts['host'], $host_domains) !== false);
 	}
 		
-	public function replace_uris_in_content() {			
+	public function replace_uris_in_content($content, $replacement_domain) {			
 		global $static_electricity_settings;
 		
-		$html_content = $this->get_HTML_content();
+		$html_content = $content;
 		$should_domains_be_replaced_in_links =  $static_electricity_settings['replace_uri_in_links'];
 		
 		if ($should_domains_be_replaced_in_links) {
 			$host_domains = $static_electricity_settings['multi_local_host_aliases'];		
 			$host_domains[] = get_home_url();
-			$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
 			
 			foreach($host_domains as $hu) {
 				WP_CLI::success("Replacing $hu with $replacement_domain...");
 				$html_content = str_ireplace($hu, $replacement_domain, $html_content);
 			}
 		}
-		
 		$html_content = str_ireplace('<~root~>', '', $html_content);
 		$html_content = str_ireplace('</~root~>', '', $html_content);
 		return $html_content;
@@ -132,39 +129,42 @@ class WebInterface {
 		return $this->curl->response;	
 	}
 	
-	public function get_HTML_content() {
-		return $this->xmlDOM->html();		
+	public function get_HTML_content() {		
+		$html_content = str_ireplace('<~root~>', '', $this->xmlDOM->html());
+		$html_content = str_ireplace('</~root~>', '', $html_content);
+		return $html_content;		
 	}
 	
 	
 	
 ///TODO: DRY this part
 	
-	public function get_local_linked_resources() {
+	public function get_local_linked_resources($content, $replacement_domain) {
 		global $static_electricity_settings;
 		$retval = array();
 		$local = get_home_url();
 		$localUrlParts = parse_url($local);
+		$xmlDOM = WebInterface::get_xml_DOM($content);
 
 		
 		if ($static_electricity_settings['scanning_options']['ahref'] == '1') {	
-			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "a", "href");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));	
+			$haystack = WebInterface::get_values_by_tag_attribute($xmlDOM, "a", "href");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack, $replacement_domain));	
 		}
 	
 		if ($static_electricity_settings['scanning_options']['img'] == '1') {	
-			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "img", "src");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));	
+			$haystack = WebInterface::get_values_by_tag_attribute($xmlDOM, "img", "src");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack, $replacement_domain));	
 		}
 	
 		if ($static_electricity_settings['scanning_options']['css'] == '1') {	
-			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "link", "href");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));
+			$haystack = WebInterface::get_values_by_tag_attribute($xmlDOM, "link", "href");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack, $replacement_domain));
 		}
 		
 		if ($static_electricity_settings['scanning_options']['javascript'] == '1') {	
-			$haystack = WebInterface::get_values_by_tag_attribute($this->xmlDOM, "script", "src");
-			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack));
+			$haystack = WebInterface::get_values_by_tag_attribute($xmlDOM, "script", "src");
+			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack, $replacement_domain));
 		}
 		return array_unique($retval);
 	}
