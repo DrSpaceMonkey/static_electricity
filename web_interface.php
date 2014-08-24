@@ -122,6 +122,9 @@ class WebInterface {
 				$html_content = str_ireplace($hu, $replacement_domain, $html_content);
 			}
 		}
+		
+		$html_content = str_ireplace('<~root~>', '', $html_content);
+		$html_content = str_ireplace('</~root~>', '', $html_content);
 		return $html_content;
 	}
 	
