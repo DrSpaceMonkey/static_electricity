@@ -49,7 +49,7 @@ namespace FileInterface {
 
 		
 		public function copy_file($source, $destination) {	
-			if (!directory_exists(dir_name($source)))
+			if (!is_dir(dir_name($source)))
 				mkdir($destination, 0755, true);
 				
 			copy ( $source , $destination );

@@ -200,9 +200,9 @@ class StaticWordpress {
 				$this->echo_flush("Processing $path ...");
 				
 				$is_html = $web_interface->is_html();
+				$is_css = pathinfo($u, PATHINFO_EXTENSION) == "css";
 				
-				
-				if ($web_interface->is_html() && !$web_interface->is_404() ){
+				if (($is_html or $is_css) && !$web_interface->is_404() ){
 				
 					$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
 					$html_content = $web_interface->get_HTML_content();
@@ -210,12 +210,9 @@ class StaticWordpress {
 				
 					$bytes_written = $this->save_to_working_directory($fixed_content_to_save, $path);
 					
-					
-					
 					$content_to_harvest = $web_interface->replace_uris_in_content($html_content, get_home_url());
 					
-					
-					$retval['harvested_uris'] = $web_interface->get_local_linked_resources($content_to_harvest, get_home_url());
+					$retval['harvested_uris'] = $web_interface->get_local_linked_resources($content_to_harvest, get_home_url(), $u);
 				} else {
 					$bytes_written = $this->save_to_working_directory($web_interface->get_content(), $path);
 					
@@ -320,21 +317,18 @@ class StaticWordpress {
 		global $static_electricity_settings;
 		global $reduxConfig;
 		
+		$this->get_theme_files();
+		
 		$this->echo_flush('<pre id="#inner_html_sideload_object">');
 	
 		$this->echo_flush('Scanning blog');
-		// $static_electricity_settings['rescan_blog']
+		
 		$uris = $this->scan_pages();
-		
-		//$uris = array(get_home_url());
-		
 		
 		$this->echo_flush('Removing any duplicate URIs');		
 		$uris = array_unique($uris);						
 		$this->echo_flush('Found ' . count($uris) . ' URIs');
 		$results = ($this->process_uris(array_fill_keys($uris, 0), array()));
-		
-		
 		
 		$this->echo_flush('Processed a total of ' . count($results) . ' URIs');
 		$this->echo_flush('Moving files to final destination...');
@@ -343,15 +337,49 @@ class StaticWordpress {
 		$this->relocate_working_files();
 		
 		
-		
 		echo '</pre>';
 		die();
 		
 	}
 	
+	function get_theme_files() {
+	
+		global $static_electricity_settings;		
+		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
+	
+	
+		$retval = array();
+		
+		$theme_root = get_theme_root();
+		
+		$base_uri = get_theme_root_uri();
+		
+		$base_directory = get_home_path();
+		
+		$file_list = FileInterface\BaseFileInterface::get_file_list($theme_root);
+		foreach($file_list as $file) {			
+				
+			$ext = pathinfo($file, PATHINFO_EXTENSION);
+			if ($ext != "php") {
+				$new_file_location = $working_dir. str_replace($base_directory, "", $file);
+				
+				if (!is_dir(dirname($new_file_location))) {
+					WP_CLI::success(dirname($new_file_location));
+					mkdir(dirname($new_file_location), 0755, true);
+				}
+				if (copy($file, $new_file_location)) {
+					WP_CLI::success("Copied theme file $file to $new_file_location");
+				} else {
+					WP_CLI::warning("Copying $file to $new_file_location failed!");
+					$errors= error_get_last();
+					var_dump($errors);
+				}
+			}
+		}
+	}	
+	
 	function relocate_working_files() {
 		global $static_electricity_settings;		
-		$filename = ltrim($path, '/');	
 		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
 		
 		$file = new FileInterface\FileInterface();

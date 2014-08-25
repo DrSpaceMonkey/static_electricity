@@ -13,7 +13,7 @@ namespace FileInterface;
 		abstract public function clone_directory_to_destination($directory);
 		
 		
-		protected function get_file_list($dir) {
+		public static function get_file_list($dir) {
 			$retval = array();
 			$ffs = scandir($dir);
 			foreach($ffs as $file) {
@@ -21,7 +21,7 @@ namespace FileInterface;
 				$basename = basename($file);
 				if (( $basename != '.' ) && ( $basename != '..' )) { 				
 					if (is_dir($file)) {
-						$retval = array_merge($retval, $this->get_file_list($file));
+						$retval = array_merge($retval, BaseFileInterface::get_file_list($file));
 					} elseif (is_file($file)) {
 						$retval[] = $file;
 					} else {
@@ -145,5 +145,6 @@ namespace FileInterface;
 	}
 
 
+	
 global $static_file_interface;
 $static_file_interface = new FileInterface();

@@ -29,7 +29,8 @@ namespace FileInterface {
 			global $static_electricity_settings;
 			$destination_directory = $static_electricity_settings['local-file-target-directory'];
 			
-			$files = $this->get_file_list($directory);
+			$files = BaseFileInterface::get_file_list($directory);
+			
 			
 			foreach($files as $file) {
 				$this->copy_file_to_s3($file, $directory);
@@ -84,7 +85,7 @@ namespace FileInterface {
 
 		
 		public function copy_file($source, $destination) {	
-			if (!directory_exists(dir_name($source)))
+			if (!is_dir(dir_name($source)))
 				mkdir($destination, 0755, true);
 				
 			copy ( $source , $destination );

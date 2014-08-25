@@ -135,11 +135,77 @@ class WebInterface {
 		return $html_content;		
 	}
 	
+	public function get_urls_from_css($text, $u)
+	{
+	
+	
+		$url_parts = parse_url($u);
+		
+		
+		$base_path = $url_parts['path'];
+	
+		if (strpos($url_parts['path'],'.') !== false) {
+			$base_path = dirname($base_path);
+		}
+		
+		$url_parts['path'] = $base_path;
+	
+		$base_url = http_build_url($url_parts);
+	
+	
+	    $urls = array( );
+	 
+	    $url_pattern     = '(([^\\\\\'", \(\)]*(\\\\.)?)+)';
+	    $urlfunc_pattern = 'url\(\s*[\'"]?' . $url_pattern . '[\'"]?\s*\)';
+	    $pattern         = '/(' .
+		    '(@import\s*[\'"]' . $url_pattern     . '[\'"])' .
+		   '|(@import\s*'      . $urlfunc_pattern . ')'      .
+		   '|('                . $urlfunc_pattern . ')'      .  ')/iu';
+	    if ( preg_match_all( $pattern, $text, $matches ) ){
+			   //return $urls;
+		 
+		    // @import '...'
+		    // @import "..."
+		    foreach ( $matches[3] as $match )
+			   if ( !empty($match) )
+				  $urls['import'][] = 
+					 preg_replace( '/\\\\(.)/u', '\\1', $match );
+		 
+		    // @import url(...)
+		    // @import url('...')
+		    // @import url("...")
+		    foreach ( $matches[7] as $match )
+			   if ( !empty($match) )
+				  $urls['import'][] = 
+					 preg_replace( '/\\\\(.)/u', '\\1', $match );
+		 
+		    // url(...)
+		    // url('...')
+		    // url("...")
+		    foreach ( $matches[11] as $match )
+			   if ( !empty($match) )
+				  $urls['property'][] = 
+					 preg_replace( '/\\\\(.)/u', '\\1', $match );
+		}
+	 
+		$retval = array();
+		
+		$urls = call_user_func_array('array_merge', $urls);
+				
+		foreach($urls as $u)
+		{			
+			$retval[] = WebInterface::relative_to_absolute_uri($u, $base_url);
+		}
+		
+	    return $retval;
+}
+
+	
 	
 	
 ///TODO: DRY this part
 	
-	public function get_local_linked_resources($content, $replacement_domain) {
+	public function get_local_linked_resources($content, $replacement_domain, $u) {
 		global $static_electricity_settings;
 		$retval = array();
 		$local = get_home_url();
@@ -160,6 +226,10 @@ class WebInterface {
 		if ($static_electricity_settings['scanning_options']['css'] == '1') {	
 			$haystack = WebInterface::get_values_by_tag_attribute($xmlDOM, "link", "href");
 			$retval = array_merge($retval, WebInterface::filter_tag_URLs_for_local_host($haystack, $replacement_domain));
+			
+			$css_uris = $this->get_urls_from_css($content, $u);
+						
+			$retval = array_merge($retval, $css_uris);
 		}
 		
 		if ($static_electricity_settings['scanning_options']['javascript'] == '1') {	
