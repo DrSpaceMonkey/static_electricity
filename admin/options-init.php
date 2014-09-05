@@ -163,78 +163,7 @@ if (!class_exists('admin_folder_Redux_Framework_config')) {
 			$sample_patterns        = array();
 			$home_url               = get_home_url();
 
-			if (is_dir($sample_patterns_path)) :
-
-			if ($sample_patterns_dir = opendir($sample_patterns_path)) :
-			$sample_patterns = array();
-
-			while (( $sample_patterns_file = readdir($sample_patterns_dir) ) !== false) {
-
-				if (stristr($sample_patterns_file, '.png') !== false || stristr($sample_patterns_file, '.jpg') !== false) {
-					$name = explode('.', $sample_patterns_file);
-					$name = str_replace('.' . end($name), '', $sample_patterns_file);
-					$sample_patterns[]  = array('alt' => $name, 'img' => $sample_patterns_url . $sample_patterns_file);
-				}
-			}
-			endif;
-			endif;
-
-			ob_start();
-
-			$ct             = wp_get_theme();
-			$this->theme    = $ct;
-			$item_name      = $this->theme->get('Name');
-			$tags           = $this->theme->Tags;
-			$screenshot     = $this->theme->get_screenshot();
-			$class          = $screenshot ? 'has-screenshot' : '';
-
-			$customize_title = sprintf(__('Customize &#8220;%s&#8221;', 'redux-framework-demo'), $this->theme->display('Name'));
-			
-			?>
-			<div id="current-theme" class="<?php echo esc_attr($class); ?>">
-			<?php if ($screenshot) : ?>
-			<?php if (current_user_can('edit_theme_options')) : ?>
-			<a href="<?php echo wp_customize_url(); ?>" class="load-customize hide-if-no-customize" title="<?php echo esc_attr($customize_title); ?>">
-			<img src="<?php echo esc_url($screenshot); ?>" alt="<?php esc_attr_e('Current theme preview'); ?>" />
-			</a>
-			<?php endif; ?>
-			<img class="hide-if-customize" src="<?php echo esc_url($screenshot); ?>" alt="<?php esc_attr_e('Current theme preview'); ?>" />
-			<?php endif; ?>
-
-			<h4><?php echo $this->theme->display('Name'); ?></h4>
-
-			<div>
-			<ul class="theme-info">
-			<li><?php printf(__('By %s', 'redux-framework-demo'), $this->theme->display('Author')); ?></li>
-			<li><?php printf(__('Version %s', 'redux-framework-demo'), $this->theme->display('Version')); ?></li>
-			<li><?php echo '<strong>' . __('Tags', 'redux-framework-demo') . ':</strong> '; ?><?php printf($this->theme->display('Tags')); ?></li>
-			</ul>
-			<p class="theme-description"><?php echo $this->theme->display('Description'); ?></p>
-			<?php
-			if ($this->theme->parent()) {
-				printf(' <p class="howto">' . __('This <a href="%1$s">child theme</a> requires its parent theme, %2$s.') . '</p>', __('http://codex.wordpress.org/Child_Themes', 'redux-framework-demo'), $this->theme->parent()->display('Name'));
-			}
-			?>
-
-			</div>
-			</div>
-
-			<?php
-			$item_info = ob_get_contents();
-
-			ob_end_clean();
-
-			$sampleHTML = '';
-			if (file_exists(dirname(__FILE__) . '/info-html.html')) {
-				/** @global WP_Filesystem_Direct $wp_filesystem  */
-				global $wp_filesystem;
-				if (empty($wp_filesystem)) {
-					require_once(ABSPATH . '/wp-admin/includes/file.php');
-					WP_Filesystem();
-				}
-				$sampleHTML = $wp_filesystem->get_contents(dirname(__FILE__) . '/info-html.html');
-			}
-			
+	
 			global $static_file_interface;
 			
 			$this->sections[] = array(

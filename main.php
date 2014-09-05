@@ -44,8 +44,10 @@ class StaticWordpress {
 	
 	public function __construct() {		
 		global $wpdb;
-		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
 		require_once dirname(__FILE__) . '/class-tgm-plugin-activation.php';
+		
+		register_activation_hook( __FILE__, array( 'StaticWordpress', 'activate' ) );		
+		
 		require_once dirname(__FILE__) . '/admin/admin-init.php';
 		require_once dirname(__FILE__) . '/http_build_url.php';
 		require_once dirname(__FILE__) . '/web_interface.php';
@@ -202,21 +204,26 @@ class StaticWordpress {
 				$is_html = $web_interface->is_html();
 				$is_css = pathinfo($u, PATHINFO_EXTENSION) == "css";
 				
-				if (($is_html or $is_css) && !$web_interface->is_404() ){
+				if (!$web_interface->is_404()) {
 				
-					$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
-					$html_content = $web_interface->get_HTML_content();
-					$fixed_content_to_save = $web_interface->replace_uris_in_content($html_content, $replacement_domain);
-				
-					$bytes_written = $this->save_to_working_directory($fixed_content_to_save, $path);
+					if ($is_html or $is_css){
 					
-					$content_to_harvest = $web_interface->replace_uris_in_content($html_content, get_home_url());
+						$replacement_domain = $static_electricity_settings['replacement_uri_prefix'];
+						$html_content = $web_interface->get_HTML_content();
+						$fixed_content_to_save = $web_interface->replace_uris_in_content($html_content, $replacement_domain);
 					
-					$retval['harvested_uris'] = $web_interface->get_local_linked_resources($content_to_harvest, get_home_url(), $u);
+						$bytes_written = $this->save_to_working_directory($fixed_content_to_save, $path);
+						
+						$content_to_harvest = $web_interface->replace_uris_in_content($html_content, get_home_url());
+						
+						$retval['harvested_uris'] = $web_interface->get_local_linked_resources($content_to_harvest, get_home_url(), $u);
+					} else {
+						$bytes_written = $this->save_to_working_directory($web_interface->get_content(), $path);
+						
+					}
 				} else {
-					$bytes_written = $this->save_to_working_directory($web_interface->get_content(), $path);
-					
-				}
+					WP_CLI::warning("$u returned 404");
+				}				
 			} else {
 				$this->echo_flush("File is up to date ($path)");	
 				$bytes_written = strlen($web_interface->get_content());
@@ -317,7 +324,9 @@ class StaticWordpress {
 		global $static_electricity_settings;
 		global $reduxConfig;
 		
+		$this->get_upload_files();
 		$this->get_theme_files();
+		
 		
 		$this->echo_flush('<pre id="#inner_html_sideload_object">');
 	
@@ -333,30 +342,37 @@ class StaticWordpress {
 		$this->echo_flush('Processed a total of ' . count($results) . ' URIs');
 		$this->echo_flush('Moving files to final destination...');
 		
-		
 		$this->relocate_working_files();
 		
 		
 		echo '</pre>';
-		die();
 		
 	}
 	
 	function get_theme_files() {
-	
-		global $static_electricity_settings;		
-		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
-	
-	
-		$retval = array();
-		
+
 		$theme_root = get_theme_root();
 		
-		$base_uri = get_theme_root_uri();
+		$this->get_directory_files($theme_root);
+
+	}
+	
+	function get_upload_files() {
+		$upload_root = wp_upload_dir()['basedir'];
+		
+		$this->get_directory_files($upload_root);
+
+	}
+	
+	function get_directory_files($dir_to_scan) {
+		global $static_electricity_settings;		
+		$working_dir = trailingslashit($static_electricity_settings['static_electricity_working_directory']);
+		
 		
 		$base_directory = get_home_path();
 		
-		$file_list = FileInterface\BaseFileInterface::get_file_list($theme_root);
+		$file_list = FileInterface\BaseFileInterface::get_file_list($dir_to_scan);
+		WP_CLI::success("Scanning $dir_to_scan");
 		foreach($file_list as $file) {			
 				
 			$ext = pathinfo($file, PATHINFO_EXTENSION);
@@ -368,7 +384,7 @@ class StaticWordpress {
 					mkdir(dirname($new_file_location), 0755, true);
 				}
 				if (copy($file, $new_file_location)) {
-					WP_CLI::success("Copied theme file $file to $new_file_location");
+					WP_CLI::success("Copied file $file to $new_file_location");
 				} else {
 					WP_CLI::warning("Copying $file to $new_file_location failed!");
 					$errors= error_get_last();
@@ -376,7 +392,7 @@ class StaticWordpress {
 				}
 			}
 		}
-	}	
+	}
 	
 	function relocate_working_files() {
 		global $static_electricity_settings;		
@@ -439,6 +455,7 @@ class StaticWordpress {
 
 	function activate() {
 		global $wpdp;		
+		
 		$db = new DatabaseInterface($wpdb);		
 		$db->create_database_tables();
 	}
@@ -519,11 +536,10 @@ class StaticWordpress {
 
 $wpStaticWordpress = new StaticWordpress();
 //wp_register_script( "static_electricity_javascript", WP_PLUGIN_URL.'/static_electricity/sideload.js', array('jquery') );
-#add_action('plugins_loaded', array($wpStaticWordpress, 'admin_init'));  
-add_action('plugins_loaded', array($wpStaticWordpress, 'admin_menu'));
-add_action('tgmpa_register', array($wpStaticWordpress, 'static_electricity_required_plugins'));
-add_action('wp_after_admin_bar_render', array($wpStaticWordpress, 'footer_inject'), 100);
+//add_action('plugins_loaded', array($wpStaticWordpress, 'admin_init'));  
 
+add_action('admin_menu', array($wpStaticWordpress, 'admin_menu'));
+add_action('tgmpa_register', array($wpStaticWordpress, 'static_electricity_required_plugins'));
 
 //Version parameters need to be removed from script URLs
 function vc_remove_wp_ver_css_js( $src ) {

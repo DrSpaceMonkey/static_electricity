@@ -10,13 +10,15 @@ namespace FileInterface {
 		
 		public function __construct(){
 		
-			$this->aws = new \Amazon_Web_Services(plugins_url('amazon-web-services'));
-			$this->client = $this->aws->get_client()->get( 's3' );
-			$this->default_directory = dirname(__DIR__) . '/static/';
-			if (!is_dir($this->default_directory)){
-				$this->create_directory($this->default_directory);				
+			if (class_exists("\Amazon_Web_Services")) {
+				$this->aws = new \Amazon_Web_Services(plugin_dir_path('amazon-web-services'));
+				$this->client = $this->aws->get_client()->get( 's3' );
+				$this->default_directory = dirname(__DIR__) . '/static/';
+				if (!is_dir($this->default_directory)){
+					$this->create_directory($this->default_directory);				
+				}
+				$this->default_directory = realpath($this->default_directory);
 			}
-			$this->default_directory = realpath($this->default_directory);
 		}
 	
 	
@@ -55,15 +57,23 @@ namespace FileInterface {
 		    'SourceFile' => $path,
 		    'ACL'        => 'public-read'
 		    );
-			$result = $this->client->putObject($args);
-			$obj_url = ($result['ObjectURL']);
+		    
+		    
+		    
+			try {
 			
-			$this->client->waitUntil('ObjectExists', array(
-			    'Bucket' => $bucket,
-			    'Key'    => $key_path,
-			));
-			
-			\WP_CLI::success("Uploaded  $path to $obj_url");
+				$result = $this->client->putObject($args);
+				$obj_url = ($result['ObjectURL']);
+				$result = $this->client->putObject($args);
+				$obj_url = ($result['ObjectURL']);
+				$this->client->waitUntil('ObjectExists', array(
+				    'Bucket' => $bucket,
+				    'Key'    => $key_path,
+				));
+				\WP_CLI::success("Uploaded  $path to $obj_url");
+			} catch (Exception $e) {
+				\WP_CLI::error("Uploaded  $path failed! ($e)");
+			}
 			
 		}
 		
@@ -110,19 +120,27 @@ namespace FileInterface {
 			FileInterface\FileInterface::deleteDir($dirPath);
 		}
 		
-		private function get_bucket_list() {						
-			$result = $this->client->listBuckets();			
-			$retval = array();
-			foreach($result['Buckets'] as $bucket) {
-				$retval[$bucket['Name']] = $bucket['Name'];
+		private function get_bucket_list() {
+
+			try {
+				if (isset($this->client)) {
+				$result = $this->client->listBuckets();			
+				$retval = array();
+				foreach($result['Buckets'] as $bucket) {
+					$retval[$bucket['Name']] = $bucket['Name'];
+				}
+				return $retval;
+				} else {
+					throw new \Exception('AWS library not loading properly');
+				}
+			} catch (\Exception $e){
+				return (array("EORROR" => "Unable to list buckets. Please check your AWS configuration."));				
+				
 			}
-			return $retval;
-			
 		}
 		
 		public function get_redux_options() {
-
-			
+	
 			$retval = array(
 			    'title'   =>  $this->get_display_name(),
 			    'icon'    => 'el-icon-cogs',
@@ -134,18 +152,8 @@ namespace FileInterface {
 					'type'      => 'select',
 					'title'     => 'Target bucket',
 					'subtitle'  => "S3 Bucket to use",
-					'required'  => array('static_electricity_file_interface_select', '=', get_class($this)),
-					'validate' => 'not_empty',
 					'options'  => $this->get_bucket_list(),
 					),				
-					array(
-					'id'        => 'opt-raw',
-					'type'      => 'raw',
-					'title'     => 'Target bucket',
-					'subtitle'  => "S3 Bucket to use",
-					'required'  => array('static_electricity_file_interface_select', '!=', get_class($this)),
-					'content' => 'This setting is only required if you are using the S3 storage method',
-					),		
 			    ),
 			);
 			return $retval;
